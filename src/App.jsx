@@ -1,27 +1,27 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import { Route, Routes } from 'react-router-dom'
-import DefaultLayout from './layouts/DefaultLayout'
-// import './App.css'
-import 'bootstrap/dist/css/bootstrap.min.css';
-import Home from './pages/Home'
-import Register from './pages/Register'
-import Product from './pages/Product'
-import Detail from './pages/Detail'
+// src/App.jsx
+import { ConfigProvider } from "antd";
+import { useDispatch, useSelector } from "react-redux";
+import { ToastContainer } from "react-toastify";
+import { lightTheme, darkTheme } from "./themes";
+import Routers from "./routes/routers"; // Sử dụng Routers
+import 'slick-carousel/slick/slick.css';
+import 'slick-carousel/slick/slick-theme.css';
+import { clearGuestCart } from "./redux/guestCartSlice";
+import { useEffect } from "react";
+
 function App() {
-
-
+  const dispatch = useDispatch();
+  const { theme } = useSelector((state) => state.theme);
+  const selectedTheme = theme === "light" ? lightTheme : darkTheme;
+  useEffect(() => {
+    dispatch(clearGuestCart());
+  }, []);
   return (
-    <Routes>
-      <Route path='' element={<DefaultLayout />}>
-        <Route index element={<Home />}></Route>
-        <Route path='product-detail/:id' element={<Detail />}></Route>
-        <Route path='product' element={<Product />}></Route>
-      </Route>
-      <Route path='/register' element={<Register />}></Route>
-    </Routes>
-  )
+    <ConfigProvider theme={selectedTheme}>
+      <Routers />
+      <ToastContainer />
+    </ConfigProvider>
+  );
 }
 
-export default App
+export default App;
