@@ -19,26 +19,22 @@ export default function LoginAdmin() {
   const handleLogin = (values) => {
     login(values)
       .then((res) => {
-        // Lấy roles từ Cookies sau khi đăng nhập thành công
+        console.log('Login response:', res); // Log để kiểm tra response
         const roles = Cookies.get('roles') ? JSON.parse(Cookies.get('roles')) : [];
-
-        // Kiểm tra xem roles có chứa "ADMIN" hoặc "MANAGER" không
+        console.log('Roles from cookies:', roles); // Log để kiểm tra roles
         const hasAdminRights = roles.some(
           (role) => role === 'ADMIN' || role === 'MANAGER'
         );
-
         if (!hasAdminRights) {
-          // Nếu chỉ có role "USER" hoặc không có quyền phù hợp
           toast.error('Người dùng không có quyền đăng nhập vào trang này!');
-          return; // Ngăn điều hướng
+          return;
         }
-
-        // Nếu có quyền, hiển thị thông báo thành công và điều hướng
         toast.success('Đăng nhập thành công!');
-        navigate('/admin');
+        navigate('/admin/category');
       })
       .catch((err) => {
-        toast.error(err.response?.data?.message || 'Đăng nhập thất bại!');
+        console.error('Login error:', err.response?.data); // Log lỗi chi tiết
+        toast.error(err.response?.data || 'Đăng nhập thất bại!');
       });
   };
 
@@ -115,7 +111,7 @@ export default function LoginAdmin() {
               },
             ]}
           />
-          <div
+          {/* <div
             style={{
               marginBlockEnd: 24,
             }}
@@ -130,7 +126,7 @@ export default function LoginAdmin() {
             >
               Quên mật khẩu
             </a>
-          </div>
+          </div> */}
         </LoginForm>
       </div>
     </ProConfigProvider>

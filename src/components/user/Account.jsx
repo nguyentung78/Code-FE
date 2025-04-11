@@ -1,9 +1,29 @@
-import Cookies from 'js-cookie';
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Form, Input, Button, Upload, message, Tabs, List, Modal, Table, Tag, Spin, Typography, Divider, Alert, Avatar } from 'antd'; // Thêm Avatar
+import {
+  Form,
+  Input,
+  Button,
+  Upload,
+  message,
+  Tabs,
+  List,
+  Modal,
+  Table,
+  Tag,
+  Spin,
+  Typography,
+  Divider,
+  Alert,
+  Avatar,
+  Card,
+  Image,
+  Pagination,
+} from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
+import Cookies from 'js-cookie';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import {
   fetchUserProfile,
   updateUserProfile,
@@ -13,6 +33,7 @@ import {
   deleteAddress,
   clearError,
 } from '../../redux/accountSlice';
+import { fetchWishList, removeFromWishList } from '../../redux/wishListSlice';
 import { fetchOrderHistory, cancelOrder, fetchOrderDetail } from '../../redux/orderUserSlice';
 
 const { TabPane } = Tabs;
@@ -21,77 +42,110 @@ const { Title, Text } = Typography;
 const Account = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { profile, addresses, loading, error } = useSelector((state) => state.account);
+
+  const { profile, addresses, loading: accountLoading, error: accountError } = useSelector((state) => state.account);
+  const { wishList, page, size, totalElements, totalPages, loading: wishListLoading, error: wishListError } = useSelector((state) => state.wishList);
   const { orders, orderDetail, loading: orderLoading, error: orderError } = useSelector((state) => state.orderUser);
+
   const [profileForm] = Form.useForm();
   const [passwordForm] = Form.useForm();
   const [addressForm] = Form.useForm();
   const [fileList, setFileList] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
-
+  const [currentPage, setCurrentPage] = useState(1); // Trang hiện tại (bắt đầu từ 1)
+  const handleLogoutAndRedirect = (reason) => {
+    Cookies.remove('token'); // Xóa token khỏi cookie
+    navigate('/login-user', {
+      state: { message: reason },
+    }); // Chuyển hướng đến trang đăng nhập với thông báo
+  };
   useEffect(() => {
-    dispatch(fetchUserProfile()).then((action) => {
-      console.log('Profile data:', action.payload);
-    });
+    const token = Cookies.get('token');
+    if (!token) {
+      toast.error('Vui lòng đăng nhập để xem thông tin tài khoản!');
+      navigate('/login-user');
+      return;
+    }
+    dispatch(fetchUserProfile());
     dispatch(fetchAddresses());
+    dispatch(fetchWishList({ page: currentPage - 1, size: 10 })); // Gọi API với phân trang
     dispatch(fetchOrderHistory());
-  }, [dispatch]);
+  }, [dispatch, navigate, currentPage]);
 
   useEffect(() => {
     if (profile) {
-      profileForm.setFieldsValue(profile);
+      profileForm.setFieldsValue({
+        username: profile.username,
+        email: profile.email,
+        fullname: profile.fullname,
+        phone: profile.phone,
+        address: profile.address,
+      });
     }
-    if (error) {
-      message.error(error);
+    if (accountError) {
+      message.error(accountError);
       dispatch(clearError());
     }
-  }, [profile, error, profileForm, dispatch]);
+  }, [profile, accountError, profileForm, dispatch]);
 
-  const onProfileFinish = (values) => {
-    const data = new FormData();
-    data.append('username', values.username || '');
-    data.append('email', values.email || '');
-    data.append('fullname', values.fullname || '');
-    data.append('phone', values.phone || '');
-    data.append('address', values.address || '');
-    if (fileList.length > 0) {
-      data.append('avatar', fileList[0].originFileObj);
+  const onProfileFinish = async (values) => {
+    const formData = new FormData();
+    Object.keys(values).forEach((key) => {
+      if (values[key]) formData.append(key, values[key]);
+    });
+    if (fileList.length > 0 && fileList[0].originFileObj) {
+      formData.append('avatar', fileList[0].originFileObj);
     }
-  
-    dispatch(updateUserProfile(data)).then(() => {
+    try {
+      await dispatch(updateUserProfile(formData)).unwrap();
       message.success('Cập nhật thông tin thành công!');
       setFileList([]);
-    });
+      dispatch(fetchUserProfile());
+    } catch (err) {
+      message.error(err || 'Cập nhật thông tin thất bại!');
+    }
   };
-  
-  
 
-  const onPasswordFinish = (values) => {
-    dispatch(changePassword(values)).then(() => {
+  const onPasswordFinish = async (values) => {
+    try {
+      await dispatch(changePassword(values)).unwrap();
       message.success('Đổi mật khẩu thành công!');
       passwordForm.resetFields();
-    });
+    } catch (err) {
+      message.error(err || 'Đổi mật khẩu thất bại!');
+    }
   };
 
-  const onAddressFinish = (values) => {
-    dispatch(addAddress(values)).then(() => {
+  const onAddressFinish = async (values) => {
+    try {
+      await dispatch(addAddress(values)).unwrap();
       message.success('Thêm địa chỉ thành công!');
       addressForm.resetFields();
       dispatch(fetchAddresses());
-    });
+    } catch (err) {
+      message.error(err || 'Thêm địa chỉ thất bại!');
+    }
   };
 
   const handleDeleteAddress = (addressId) => {
     Modal.confirm({
       title: 'Xác nhận xóa địa chỉ',
       content: 'Bạn có chắc chắn muốn xóa địa chỉ này?',
-      onOk: () => {
-        dispatch(deleteAddress(addressId)).then(() => {
-          message.success('Xóa địa chỉ thành công!');
-        });
+      onOk: async () => {
+        await dispatch(deleteAddress(addressId)).unwrap();
+        message.success('Xóa địa chỉ thành công!');
       },
     });
+  };
+
+  const handleRemoveFromWishList = (productId) => {
+    dispatch(removeFromWishList(productId))
+      .then(() => {
+        toast.success('Đã xóa sản phẩm khỏi danh sách yêu thích!');
+        dispatch(fetchWishList({ page: currentPage - 1, size: 10 })); // Cập nhật lại danh sách
+      })
+      .catch(() => toast.error('Lỗi khi xóa sản phẩm!'));
   };
 
   const handleCancelOrder = (orderId) => {
@@ -100,18 +154,17 @@ const Account = () => {
       content: 'Bạn có chắc chắn muốn hủy đơn hàng này?',
       okText: 'Hủy đơn hàng',
       okType: 'danger',
-      cancelText: 'Không',
-      onOk() {
-        dispatch(cancelOrder(orderId));
+      onOk: async () => {
+        await dispatch(cancelOrder(orderId)).unwrap();
+        message.success('Hủy đơn hàng thành công!');
+        dispatch(fetchOrderHistory());
       },
     });
   };
 
   const handleViewOrderDetail = (serialNumber) => {
     setSelectedOrder(serialNumber);
-    dispatch(fetchOrderDetail(serialNumber)).then(() => {
-      setIsModalVisible(true);
-    });
+    dispatch(fetchOrderDetail(serialNumber)).then(() => setIsModalVisible(true));
   };
 
   const handleModalClose = () => {
@@ -129,36 +182,19 @@ const Account = () => {
   };
 
   const orderColumns = [
-    {
-      title: 'Mã đơn hàng',
-      dataIndex: 'serialNumber',
-      key: 'serialNumber',
-    },
+    { title: 'Mã đơn hàng', dataIndex: 'serialNumber', key: 'serialNumber' },
     {
       title: 'Tổng tiền',
       dataIndex: 'totalPrice',
       key: 'totalPrice',
-      render: (price) => `${price.toLocaleString()} VNĐ`,
+      render: (price) => `${price.toLocaleString('vi-VN')} VNĐ`,
     },
     {
       title: 'Trạng thái',
       dataIndex: 'status',
       key: 'status',
       render: (status) => {
-        let color;
-        switch (status) {
-          case 'WAITING':
-            color = 'blue';
-            break;
-          case 'CONFIRMED':
-            color = 'green';
-            break;
-          case 'CANCELLED':
-            color = 'red';
-            break;
-          default:
-            color = 'gray';
-        }
+        const color = status === 'WAITING' ? 'blue' : status === 'CONFIRMED' ? 'green' : 'red';
         return <Tag color={color}>{status}</Tag>;
       },
     },
@@ -178,7 +214,7 @@ const Account = () => {
           </Button>
           {record.status === 'WAITING' && (
             <Button type="link" danger onClick={() => handleCancelOrder(record.id)}>
-              Hủy đơn hàng
+              Hủy đơn
             </Button>
           )}
         </>
@@ -186,17 +222,94 @@ const Account = () => {
     },
   ];
 
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
+  if (accountLoading || wishListLoading || orderLoading) {
+    return <Spin tip="Đang tải..." size="large" style={{ display: 'block', margin: '50px auto' }} />;
+  }
+
+  if (accountError || wishListError || orderError) {
+    return (
+      <Alert
+        message={accountError || wishListError || orderError}
+        type="error"
+        showIcon
+        style={{ margin: '20px auto', maxWidth: '600px' }}
+      />
+    );
+  }
+
   return (
-    <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
-      <h2>Quản lý tài khoản</h2>
+    <div style={{ padding: '20px', maxWidth: '1000px', margin: '0 auto' }}>
+      <Title level={2} style={{ textAlign: 'center', marginBottom: '20px' }}>
+        Quản lý tài khoản
+      </Title>
+
       <Tabs defaultActiveKey="1">
-        {/* Tab Thông tin cá nhân */}
-        <TabPane tab="Thông tin cá nhân" key="1">
+      <TabPane tab="Danh sách yêu thích" key="1">
+  {wishList.length === 0 ? (
+    <Alert message="Danh sách yêu thích trống!" type="info" showIcon />
+  ) : (
+    <>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
+        {wishList.map((item) => (
+          <Card
+            key={item.productId}
+            style={{ width: 300 }} // Giữ chiều rộng cố định
+            cover={
+              <Image
+                src={item.image || 'https://via.placeholder.com/150'}
+                alt={item.productName}
+                style={{
+                  width: '100%', // Chiều rộng full thẻ Card
+                  height: '200px', // Chiều cao cố định giống CardProduct
+                  objectFit: 'cover', // Giữ tỷ lệ ảnh
+                  padding: '10px', // Khoảng cách padding giống CardProduct
+                }}
+              />
+            }
+            actions={[
+              <Button type="link" onClick={() => navigate(`/user/product-detail/${item.productId}`)}>
+                Xem chi tiết
+              </Button>,
+              <Button type="link" danger onClick={() => handleRemoveFromWishList(item.productId)}>
+                Xóa
+              </Button>,
+            ]}
+          >
+            <Card.Meta
+              title={item.productName}
+              description={`${item.unitPrice?.toLocaleString('vi-VN')} VNĐ`}
+            />
+          </Card>
+        ))}
+      </div>
+      <Pagination
+        current={currentPage}
+        pageSize={size}
+        total={totalElements}
+        onChange={handlePageChange}
+        style={{ marginTop: '20px', textAlign: 'center' }}
+      />
+    </>
+  )}
+</TabPane>
+
+        <TabPane tab="Thông tin cá nhân" key="2">
           <Form form={profileForm} layout="vertical" onFinish={onProfileFinish}>
-            <Form.Item name="username" label="Tên đăng nhập">
+            <Form.Item name="username" label="Tên đăng nhập" rules={[{ required: true, message: 'Vui lòng nhập tên đăng nhập!' }]}>
               <Input />
             </Form.Item>
-            <Form.Item name="email" label="Email" rules={[{ type: 'email', message: 'Email không hợp lệ' }]}>
+            <Form.Item
+              name="email"
+              label="Email"
+              rules={[
+                { required: true, message: 'Vui lòng nhập email!' },
+                { type: 'email', message: 'Email không hợp lệ!' },
+              ]}
+            >
               <Input />
             </Form.Item>
             <Form.Item name="fullname" label="Họ tên">
@@ -205,19 +318,15 @@ const Account = () => {
             <Form.Item
               name="phone"
               label="Số điện thoại"
-              rules={[{ pattern: /^\d{10}$/, message: 'Số điện thoại phải có 10 chữ số' }]}
+              rules={[{ pattern: /^\d{10}$/, message: 'Số điện thoại phải có 10 chữ số!' }]}
             >
               <Input />
             </Form.Item>
             <Form.Item name="address" label="Địa chỉ">
               <Input />
             </Form.Item>
-            <Form.Item label="Avatar hiện tại">
-              {profile && profile.avatar ? (
-                <Avatar src={profile.avatar} size={64} />
-              ) : (
-                <Text type="secondary">Không có</Text>
-              )}
+            <Form.Item label="Avatar hiện tại" name="avatar">
+              {profile?.avatar ? <Avatar src={profile.avatar} size={64} /> : <Text type="secondary">Chưa có avatar</Text>}
             </Form.Item>
             <Form.Item label="Cập nhật Avatar">
               <Upload {...uploadProps}>
@@ -225,27 +334,29 @@ const Account = () => {
               </Upload>
             </Form.Item>
             <Form.Item>
-              <Button type="primary" htmlType="submit" loading={loading}>
+              <Button type="primary" htmlType="submit" loading={accountLoading}>
                 Cập nhật
               </Button>
             </Form.Item>
           </Form>
         </TabPane>
 
-        {/* Tab Đổi mật khẩu */}
-        <TabPane tab="Đổi mật khẩu" key="2">
+        <TabPane tab="Đổi mật khẩu" key="3">
           <Form form={passwordForm} layout="vertical" onFinish={onPasswordFinish}>
             <Form.Item
               name="oldPassword"
               label="Mật khẩu cũ"
-              rules={[{ required: true, message: 'Vui lòng nhập mật khẩu cũ' }]}
+              rules={[{ required: true, message: 'Vui lòng nhập mật khẩu cũ!' }]}
             >
               <Input.Password />
             </Form.Item>
             <Form.Item
               name="newPassword"
               label="Mật khẩu mới"
-              rules={[{ required: true, min: 6, message: 'Mật khẩu mới phải từ 6 ký tự trở lên' }]}
+              rules={[
+                { required: true, message: 'Vui lòng nhập mật khẩu mới!' },
+                { min: 6, message: 'Mật khẩu phải từ 6 ký tự trở lên!' },
+              ]}
             >
               <Input.Password />
             </Form.Item>
@@ -253,13 +364,13 @@ const Account = () => {
               name="confirmNewPassword"
               label="Xác nhận mật khẩu mới"
               rules={[
-                { required: true, message: 'Vui lòng xác nhận mật khẩu' },
+                { required: true, message: 'Vui lòng xác nhận mật khẩu!' },
                 ({ getFieldValue }) => ({
                   validator(_, value) {
                     if (!value || getFieldValue('newPassword') === value) {
                       return Promise.resolve();
                     }
-                    return Promise.reject('Mật khẩu xác nhận không khớp');
+                    return Promise.reject('Mật khẩu xác nhận không khớp!');
                   },
                 }),
               ]}
@@ -267,21 +378,20 @@ const Account = () => {
               <Input.Password />
             </Form.Item>
             <Form.Item>
-              <Button type="primary" htmlType="submit" loading={loading}>
+              <Button type="primary" htmlType="submit" loading={accountLoading}>
                 Đổi mật khẩu
               </Button>
             </Form.Item>
           </Form>
         </TabPane>
 
-        {/* Tab Quản lý địa chỉ */}
-        <TabPane tab="Quản lý địa chỉ" key="3">
-          <h3>Thêm địa chỉ mới</h3>
+        <TabPane tab="Quản lý địa chỉ" key="4">
+          <Title level={4}>Thêm địa chỉ mới</Title>
           <Form form={addressForm} layout="vertical" onFinish={onAddressFinish}>
             <Form.Item
               name="fullAddress"
               label="Địa chỉ đầy đủ"
-              rules={[{ required: true, message: 'Vui lòng nhập địa chỉ' }]}
+              rules={[{ required: true, message: 'Vui lòng nhập địa chỉ!' }]}
             >
               <Input />
             </Form.Item>
@@ -289,8 +399,8 @@ const Account = () => {
               name="phone"
               label="Số điện thoại"
               rules={[
-                { required: true, message: 'Vui lòng nhập số điện thoại' },
-                { pattern: /^\d{10}$/, message: 'Số điện thoại phải có 10 chữ số' },
+                { required: true, message: 'Vui lòng nhập số điện thoại!' },
+                { pattern: /^\d{10}$/, message: 'Số điện thoại phải có 10 chữ số!' },
               ]}
             >
               <Input />
@@ -298,76 +408,59 @@ const Account = () => {
             <Form.Item
               name="receiveName"
               label="Tên người nhận"
-              rules={[{ required: true, message: 'Vui lòng nhập tên người nhận' }]}
+              rules={[{ required: true, message: 'Vui lòng nhập tên người nhận!' }]}
             >
               <Input />
             </Form.Item>
             <Form.Item>
-              <Button type="primary" htmlType="submit" loading={loading}>
+              <Button type="primary" htmlType="submit" loading={accountLoading}>
                 Thêm địa chỉ
               </Button>
             </Form.Item>
           </Form>
-
-          <h3>Danh sách địa chỉ</h3>
+          <Divider />
+          <Title level={4}>Danh sách địa chỉ</Title>
           <List
             dataSource={addresses}
             renderItem={(item) => (
               <List.Item
                 actions={[
-                  <Button danger onClick={() => handleDeleteAddress(item.id)}>
+                  <Button type="link" danger onClick={() => handleDeleteAddress(item.id)}>
                     Xóa
                   </Button>,
                 ]}
               >
                 <div>
-                  <p><strong>{item.receiveName}</strong> - {item.phone}</p>
-                  <p>{item.fullAddress}</p>
+                  <Text strong>{item.receiveName}</Text> - <Text>{item.phone}</Text>
+                  <br />
+                  <Text>{item.fullAddress}</Text>
                 </div>
               </List.Item>
             )}
+            locale={{ emptyText: 'Chưa có địa chỉ nào!' }}
           />
         </TabPane>
 
-        {/* Tab Quản lý đơn hàng */}
-        <TabPane tab="Quản lý đơn hàng" key="4">
-          {orderLoading ? (
-            <div style={{ textAlign: 'center', padding: '50px' }}>
-              <Spin size="large" tip="Đang tải lịch sử đơn hàng..." />
-            </div>
-          ) : orderError ? (
-            <Alert message={orderError} type="error" showIcon />
-          ) : orders.length === 0 ? (
+        <TabPane tab="Quản lý đơn hàng" key="5">
+          {orders.length === 0 ? (
             <Alert message="Bạn chưa có đơn hàng nào!" type="info" showIcon />
           ) : (
-            <Table
-              columns={orderColumns}
-              dataSource={orders}
-              rowKey="id"
-              pagination={{ pageSize: 10 }}
-            />
+            <Table columns={orderColumns} dataSource={orders} rowKey="id" pagination={{ pageSize: 5 }} />
           )}
         </TabPane>
       </Tabs>
 
-      {/* Modal chi tiết đơn hàng */}
       <Modal
         title={`Chi tiết đơn hàng #${selectedOrder}`}
-        visible={isModalVisible}
+        open={isModalVisible}
         onCancel={handleModalClose}
-        footer={[
-          <Button key="close" onClick={handleModalClose}>
-            Đóng
-          </Button>,
-        ]}
+        footer={[<Button key="close" onClick={handleModalClose}>Đóng</Button>]}
         width={600}
       >
         {orderLoading ? (
-          <div style={{ textAlign: 'center', padding: '20px' }}>
-            <Spin size="large" tip="Đang tải chi tiết đơn hàng..." />
-          </div>
-        ) : orderError || !orderDetail ? (
-          <Alert message={orderError || 'Đơn hàng không tồn tại!'} type="error" showIcon />
+          <Spin tip="Đang tải chi tiết đơn hàng..." style={{ display: 'block', margin: '20px auto' }} />
+        ) : !orderDetail ? (
+          <Alert message="Không tìm thấy chi tiết đơn hàng!" type="error" showIcon />
         ) : (
           <div>
             <Title level={4}>Thông tin đơn hàng</Title>
@@ -380,7 +473,7 @@ const Account = () => {
             <Text>{new Date(orderDetail.createdAt).toLocaleString('vi-VN')}</Text>
             <br />
             <Text strong>Tổng tiền: </Text>
-            <Text>{orderDetail.totalPrice.toLocaleString()} VNĐ</Text>
+            <Text>{orderDetail.totalPrice.toLocaleString('vi-VN')} VNĐ</Text>
             <Divider />
 
             <Title level={4}>Thông tin người nhận</Title>
@@ -399,11 +492,11 @@ const Account = () => {
               <div key={item.productId} style={{ marginBottom: '16px' }}>
                 <Text strong>{item.name}</Text>
                 <br />
-                <Text>Giá: {item.unitPrice.toLocaleString()} VNĐ</Text>
+                <Text>Giá: {item.unitPrice.toLocaleString('vi-VN')} VNĐ</Text>
                 <br />
                 <Text>Số lượng: {item.orderQuantity}</Text>
                 <br />
-                <Text strong>Tổng: {(item.unitPrice * item.orderQuantity).toLocaleString()} VNĐ</Text>
+                <Text strong>Tổng: {(item.unitPrice * item.orderQuantity).toLocaleString('vi-VN')} VNĐ</Text>
                 <Divider style={{ margin: '8px 0' }} />
               </div>
             ))}

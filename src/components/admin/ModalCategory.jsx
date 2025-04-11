@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, Form, Input, Button, Spin } from 'antd';
-import { BASE_URL_ADMIN } from '../../api/index'; // Sử dụng BASE_URL_ADMIN
+import { Modal, Form, Input, Button, Spin, Switch } from 'antd'; // Thêm Switch
+import { BASE_URL_ADMIN } from '../../api/index';
 import { toast } from 'react-toastify';
 import Cookies from "js-cookie";
 
@@ -13,38 +13,40 @@ function ModalCategory({ open, onClose, category, fetchCategories }) {
             form.setFieldsValue({
                 categoryName: category.categoryName,
                 description: category.description,
+                status: category.status, // Thêm status vào giá trị ban đầu
             });
         } else {
             form.resetFields();
+            form.setFieldsValue({ status: true }); // Mặc định status là true khi tạo mới
         }
     }, [category, form]);
 
     const onFinish = async (values) => {
         setLoading(true);
         try {
-          if (category) {
-            await BASE_URL_ADMIN.put(`/categories/${category.id}`, values, {
-              headers: {
-                Authorization: `Bearer ${Cookies.get("token")}`, // Thêm token thủ công
-              },
-            });
-            toast.success("Cập nhật danh mục thành công!");
-          } else {
-            await BASE_URL_ADMIN.post("/categories", values, {
-              headers: {
-                Authorization: `Bearer ${Cookies.get("token")}`, // Thêm token thủ công
-              },
-            });
-            toast.success("Tạo danh mục thành công!");
-          }
-          fetchCategories();
-          onClose();
+            if (category) {
+                await BASE_URL_ADMIN.put(`/categories/${category.categoryId}`, values, { // Sử dụng categoryId thay vì id
+                    headers: {
+                        Authorization: `Bearer ${Cookies.get("token")}`,
+                    },
+                });
+                toast.success("Cập nhật danh mục thành công!");
+            } else {
+                await BASE_URL_ADMIN.post("/categories", values, {
+                    headers: {
+                        Authorization: `Bearer ${Cookies.get("token")}`,
+                    },
+                });
+                toast.success("Tạo danh mục thành công!");
+            }
+            fetchCategories();
+            onClose();
         } catch (error) {
-          toast.error(error.response?.data?.message || "Có lỗi xảy ra!");
+            toast.error(error.response?.data?.message || "Có lỗi xảy ra!");
         } finally {
-          setLoading(false);
+            setLoading(false);
         }
-      };
+    };
 
     return (
         <Modal
@@ -72,6 +74,13 @@ function ModalCategory({ open, onClose, category, fetchCategories }) {
                         rules={[{ required: true, message: 'Vui lòng nhập mô tả!' }]}
                     >
                         <Input.TextArea placeholder="Mô tả danh mục" />
+                    </Form.Item>
+                    <Form.Item
+                        name="status"
+                        label="Trạng thái"
+                        valuePropName="checked" // Dùng với Switch
+                    >
+                        <Switch checkedChildren="Hoạt động" unCheckedChildren="Không hoạt động" />
                     </Form.Item>
                     <Form.Item>
                         <Button type="primary" htmlType="submit" block loading={loading}>

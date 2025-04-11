@@ -98,11 +98,11 @@ const Reports = () => {
                 <Title level={4}>{reportData.totalOrders}</Title>
               </Card>
             </Col>
-            <Col xs={24} sm={12} md={8}>
+            {/* <Col xs={24} sm={12} md={8}>
               <Card title="Tài khoản mới" bordered={false}>
                 <Title level={4}>{reportData.totalNewAccounts}</Title>
               </Card>
-            </Col>
+            </Col> */}
           </Row>
 
           <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
@@ -176,7 +176,7 @@ const Reports = () => {
           </Row>
 
           <Row gutter={[16, 16]}>
-            <Col xs={24} md={12}>
+            {/* <Col xs={24} md={12}>
               <Card title="Top sản phẩm bán chạy" bordered={false}>
                 {reportData.bestSellerProducts.length === 0 ? (
                   <Text type="secondary">Không có dữ liệu để hiển thị</Text>
@@ -205,7 +205,7 @@ const Reports = () => {
                   </ResponsiveContainer>
                 )}
               </Card>
-            </Col>
+            </Col> */}
             <Col xs={24} md={12}>
               <Card title="Top khách hàng chi tiêu" bordered={false}>
                 {reportData.topSpendingCustomers.length === 0 ? (

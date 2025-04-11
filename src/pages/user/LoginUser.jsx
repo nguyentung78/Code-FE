@@ -96,12 +96,7 @@ export default function LoginUser() {
               },
             ]}
           />
-          <div style={{ marginBlockEnd: 24 }}>
-            <ProFormCheckbox noStyle name="autoLogin">
-              Tự động đăng nhập
-            </ProFormCheckbox>
-            <a style={{ float: 'right' }}>Quên mật khẩu</a>
-          </div>
+          
         </LoginForm>
       </div>
     </ProConfigProvider>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, Form, Input, Button, Upload, Select, Spin } from 'antd';
+import { Modal, Form, Input, Button, Upload, Select, Spin, Image } from 'antd'; // Thêm Image
 import { UploadOutlined } from '@ant-design/icons';
 import { BASE_URL_ADMIN } from '../../api/index';
 import { toast } from 'react-toastify';
@@ -11,6 +11,7 @@ function ModalProduct({ open, onClose, product, fetchProducts, categories }) {
     const [form] = Form.useForm();
     const [file, setFile] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [currentImage, setCurrentImage] = useState(null); // Thêm trạng thái cho hình ảnh hiện tại
 
     useEffect(() => {
         if (product) {
@@ -20,15 +21,26 @@ function ModalProduct({ open, onClose, product, fetchProducts, categories }) {
                 description: product.description,
                 unitPrice: product.unitPrice,
                 stockQuantity: product.stockQuantity,
-                categoryId: product.category?.categoryId, // Sửa từ id thành categoryId
+                categoryId: product.category?.categoryId,
             });
+            // Thiết lập hình ảnh hiện tại
+            setCurrentImage(product.image || null);
+            setFile(null); // Reset file khi mở modal chỉnh sửa
         } else {
             form.resetFields();
+            setCurrentImage(null); // Reset hình ảnh khi tạo mới
+            setFile(null);
         }
     }, [product, form]);
 
     const handleFileChange = ({ fileList }) => {
-        setFile(fileList[0]);
+        if (fileList.length > 0) {
+            setFile(fileList[0]);
+            setCurrentImage(URL.createObjectURL(fileList[0].originFileObj)); // Hiển thị trước ảnh mới
+        } else {
+            setFile(null);
+            setCurrentImage(product ? product.image : null); // Quay lại ảnh cũ nếu xóa file
+        }
     };
 
     const onFinish = async (values) => {
@@ -42,7 +54,7 @@ function ModalProduct({ open, onClose, product, fetchProducts, categories }) {
         if (file?.originFileObj) {
             formData.append("image", file.originFileObj);
         }
-    
+
         try {
             if (product) {
                 await BASE_URL_ADMIN.put(`/products/${product.id}`, formData, {
@@ -130,14 +142,32 @@ function ModalProduct({ open, onClose, product, fetchProducts, categories }) {
                         label="Hình ảnh"
                         rules={product ? [] : [{ required: true, message: 'Vui lòng tải lên hình ảnh!' }]}
                     >
-                        <Upload
-                            onChange={handleFileChange}
-                            beforeUpload={() => false}
-                            maxCount={1}
-                            accept="image/*"
-                        >
-                            <Button icon={<UploadOutlined />}>Tải lên hình ảnh</Button>
-                        </Upload>
+                        <div>
+                            {currentImage ? (
+                                <div style={{ marginBottom: 16 }}>
+                                    <Image
+                                        src={currentImage}
+                                        alt="Hình ảnh sản phẩm"
+                                        width={100}
+                                        height={100}
+                                        style={{ objectFit: 'cover' }}
+                                    />
+                                </div>
+                            ) : (
+                                <div style={{ marginBottom: 16 }}>Không có hình ảnh</div>
+                            )}
+                            <Upload
+                                onChange={handleFileChange}
+                                beforeUpload={() => false}
+                                maxCount={1}
+                                accept="image/*"
+                                fileList={file ? [file] : []} // Hiển thị file đã chọn
+                            >
+                                <Button icon={<UploadOutlined />}>
+                                    {product ? 'Thay đổi hình ảnh' : 'Tải lên hình ảnh'}
+                                </Button>
+                            </Upload>
+                        </div>
                     </Form.Item>
                     <Form.Item>
                         <Button type="primary" htmlType="submit" block loading={loading}>

@@ -1,17 +1,22 @@
 import { BASE_URL } from '../api/index';
-import Cookies from 'js-cookie'; // Lấy token từ cookie
-
-const token = Cookies.get('token');
-
-const defaultHeaders = {
-  Authorization: `Bearer ${token}`,
-};
+import Cookies from 'js-cookie';
 
 const userService = {
+  // Hàm tiện ích để lấy header động
+  getHeaders: () => {
+    const token = Cookies.get('token');
+    if (!token) {
+      throw new Error('Token không tồn tại. Vui lòng đăng nhập lại!');
+    }
+    return {
+      Authorization: `Bearer ${token}`,
+    };
+  },
+
   // Lấy thông tin tài khoản người dùng
   getUserProfile: () =>
     BASE_URL.get('/user/account', {
-      headers: defaultHeaders,
+      headers: userService.getHeaders(),
     }),
 
   // Cập nhật thông tin cá nhân (dùng multipart/form-data)
@@ -21,8 +26,8 @@ const userService = {
       method: 'put',
       data: formData,
       headers: {
-        ...defaultHeaders,
-        // KHÔNG set Content-Type để axios tự gán khi gửi FormData (để tránh lỗi boundary)
+        ...userService.getHeaders(),
+        // Không set Content-Type để axios tự xử lý cho FormData
       },
     });
   },
@@ -30,31 +35,31 @@ const userService = {
   // Đổi mật khẩu
   changePassword: (data) =>
     BASE_URL.put('/user/account/change-password', data, {
-      headers: defaultHeaders,
+      headers: userService.getHeaders(),
     }),
 
   // Thêm địa chỉ mới
   addAddress: (data) =>
     BASE_URL.post('/user/account/addresses', data, {
-      headers: defaultHeaders,
+      headers: userService.getHeaders(),
     }),
 
   // Xóa địa chỉ
   deleteAddress: (addressId) =>
     BASE_URL.delete(`/user/account/addresses/${addressId}`, {
-      headers: defaultHeaders,
+      headers: userService.getHeaders(),
     }),
 
   // Lấy danh sách địa chỉ
   getUserAddresses: () =>
     BASE_URL.get('/user/account/addresses', {
-      headers: defaultHeaders,
+      headers: userService.getHeaders(),
     }),
 
   // Lấy chi tiết địa chỉ
   getAddressById: (addressId) =>
     BASE_URL.get(`/user/account/addresses/${addressId}`, {
-      headers: defaultHeaders,
+      headers: userService.getHeaders(),
     }),
 };
 

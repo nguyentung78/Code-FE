@@ -24,16 +24,16 @@ const Footer = () => {
             <div className="col-md-2 col-lg-2 col-xl-2 mx-auto mt-3">
               <h6 className="text-uppercase mb-4 font-weight-bold">Danh mục</h6>
               <p>
-                <a className="text-white" href="#!">MDBootstrap</a>
+                <a className="text-white" href="#!">Laptop</a>
               </p>
               <p>
-                <a className="text-white" href="#!">MDWordPress</a>
+                <a className="text-white" href="#!">Điện thoại</a>
               </p>
               <p>
-                <a className="text-white" href="#!">BrandFlow</a>
+                <a className="text-white" href="#!">Tủ lạnh</a>
               </p>
               <p>
-                <a className="text-white" href="#!">Bootstrap Angular</a>
+                <a className="text-white" href="#!">Máy giặt</a>
               </p>
             </div>
 

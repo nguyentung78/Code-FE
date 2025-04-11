@@ -14,8 +14,7 @@ export const login = async (values) => {
     localStorage.setItem('token', accessToken);
 
     store.dispatch(clearGuestCart()); // Xóa giỏ hàng guest
-    await store.dispatch(fetchUserCart()).unwrap(); // Lấy giỏ hàng user từ API
-
+    // Bỏ gọi fetchUserCart() tại đây
     return response;
   } catch (error) {
     throw error;

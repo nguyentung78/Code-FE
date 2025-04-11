@@ -1,4 +1,3 @@
-// src/components/ModalOrderDetail.jsx
 import React from 'react';
 import { Modal, Table } from 'antd';
 
@@ -6,14 +5,13 @@ function ModalOrderDetail({ open, onClose, order }) {
     const columns = [
         {
             title: 'Tên sản phẩm',
-            dataIndex: 'product',
-            key: 'product',
-            render: (product) => product.productName,
+            dataIndex: 'productName', // Đổi từ 'product' thành 'name' để khớp với OrderDetailDTO
+            key: 'productName',
         },
         {
             title: 'Số lượng',
-            dataIndex: 'quantity',
-            key: 'quantity',
+            dataIndex: 'orderQuantity', // Đổi từ 'quantity' thành 'orderQuantity'
+            key: 'orderQuantity',
         },
         {
             title: 'Đơn giá',
@@ -24,7 +22,7 @@ function ModalOrderDetail({ open, onClose, order }) {
         {
             title: 'Thành tiền',
             key: 'total',
-            render: (record) => (record.quantity * record.unitPrice).toLocaleString() + ' VNĐ',
+            render: (record) => (record.orderQuantity * record.unitPrice).toLocaleString() + ' VNĐ',
         },
     ];
 
@@ -36,14 +34,14 @@ function ModalOrderDetail({ open, onClose, order }) {
             footer={null}
             width={800}
         >
-            <p><strong>Mã đơn hàng:</strong> {order?.id}</p>
-            <p><strong>Khách hàng:</strong> {order?.user?.fullname}</p>
-            <p><strong>Địa chỉ:</strong> {order?.shippingAddress}</p>
-            <p><strong>Tổng tiền:</strong> {order?.totalAmount?.toLocaleString()} VNĐ</p>
+            <p><strong>Mã đơn hàng:</strong> {order?.serialNumber || order?.id}</p>
+            <p><strong>Khách hàng:</strong> {order?.username}</p>
+            <p><strong>Địa chỉ:</strong> {order?.receiveAddress}</p>
+            <p><strong>Tổng tiền:</strong> {order?.totalPrice?.toLocaleString()} VNĐ</p>
             <Table
                 columns={columns}
-                dataSource={order?.orderDetails}
-                rowKey={(record) => record.id}
+                dataSource={order?.items} // Đổi từ orderDetails thành items để khớp với OrderResponseDTO
+                rowKey={(record) => record.productId} // Dùng productId làm key
                 pagination={false}
             />
         </Modal>
