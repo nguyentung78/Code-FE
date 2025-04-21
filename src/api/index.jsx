@@ -9,9 +9,11 @@ export const BASE_URL_AUTH = axios.create({ baseURL: 'http://localhost:8080/api/
 BASE_URL.interceptors.request.use(
   (config) => {
     const token = Cookies.get('token');
-    // Chỉ thêm token nếu không phải là các endpoint permitAll
+    // Chỉ thêm token nếu token tồn tại và không phải là các endpoint permitAll
     if (token && !config.url.includes('/user/cart/checkout/success') && !config.url.includes('/user/cart/checkout/cancel')) {
       config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      delete config.headers.Authorization; // Xóa header Authorization nếu token không tồn tại
     }
     return config;
   },
@@ -24,6 +26,8 @@ BASE_URL_ADMIN.interceptors.request.use(
     const token = Cookies.get('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      delete config.headers.Authorization; // Xóa header Authorization nếu token không tồn tại
     }
     return config;
   },

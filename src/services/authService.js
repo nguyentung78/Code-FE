@@ -1,8 +1,6 @@
 import { BASE_URL_AUTH } from '../api/index';
 import Cookies from 'js-cookie';
 import store from '../redux/store';
-import { clearGuestCart } from '../redux/guestCartSlice';
-import { fetchUserCart, clearUserCart } from '../redux/userCartSlice';
 
 export const login = async (values) => {
   try {
@@ -13,19 +11,28 @@ export const login = async (values) => {
     Cookies.set('roles', JSON.stringify(normalizedRoles), { expires: 7 });
     localStorage.setItem('token', accessToken);
 
-    store.dispatch(clearGuestCart()); // Xóa giỏ hàng guest
-    // Bỏ gọi fetchUserCart() tại đây
     return response;
   } catch (error) {
     throw error;
   }
 };
 
-export const logout = () => {
-  Cookies.remove('token');
-  Cookies.remove('roles');
-  localStorage.removeItem('token');
-  localStorage.removeItem('userInfo');
-
-  store.dispatch(clearGuestCart()); // Xóa giỏ hàng guest
+export const logout = async () => {
+  const token = Cookies.get('token'); // Lấy token trước khi xóa
+  try {
+    if (token) {
+      await BASE_URL_AUTH.post('/logout', {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    }
+  } catch (error) {
+    console.error('Lỗi khi gọi API đăng xuất:', error);
+    throw error; // Ném lỗi để xử lý ở các component gọi hàm này
+  } finally {
+    // Xóa dữ liệu phía client bất kể API thành công hay thất bại
+    Cookies.remove('token');
+    Cookies.remove('roles');
+    localStorage.removeItem('token');
+    localStorage.removeItem('userInfo');
+  }
 };

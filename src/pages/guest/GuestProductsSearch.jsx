@@ -3,18 +3,16 @@ import { Col, Container, Row } from 'react-bootstrap';
 import { useLocation } from 'react-router-dom';
 import CardProduct from '../../components/shared/CardProduct';
 import { BASE_URL } from '../../api/index';
-import { Spin, Alert } from 'antd';
+import { Spin, Alert, Pagination } from 'antd';
 import { toast } from 'react-toastify';
-import { useDispatch, useSelector } from 'react-redux';
-import { addToGuestCart } from '../../redux/guestCartSlice'; // Sử dụng guestCartSlice
 
 function GuestProductsSearch() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const productsPerPage = 9;
   const location = useLocation();
-  const dispatch = useDispatch();
-  const cart = useSelector((state) => state.guestCart.items); // Sử dụng guestCart
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -25,7 +23,7 @@ function GuestProductsSearch() {
         const keyword = searchParams.get('search') || '';
         
         const response = await BASE_URL.get(
-          `/public/products/search?keyword=${encodeURIComponent(keyword)}&page=0&size=1000`
+          `/public/products/search?keyword=${encodeURIComponent(keyword)}&page=${currentPage - 1}&size=${productsPerPage}`
         );
         const data = response.data.content || response.data;
         if (Array.isArray(data) && data.length > 0) {
@@ -44,11 +42,10 @@ function GuestProductsSearch() {
     };
 
     fetchProducts();
-  }, [location.search]);
+  }, [location.search, currentPage]);
 
-  const addToCartHandler = (product) => {
-    dispatch(addToGuestCart({ product, quantity: 1 })); // Sử dụng addToGuestCart
-    toast.success(`${product.productName} đã được thêm vào giỏ hàng!`);
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
   };
 
   return (
@@ -65,13 +62,24 @@ function GuestProductsSearch() {
           <Alert message={error} type="warning" showIcon />
         </div>
       ) : products.length > 0 ? (
-        <Row>
-          {products.map((item) => (
-            <Col lg={4} key={item.id} className="mb-4">
-              <CardProduct product={item} onAddToCart={addToCartHandler} />
-            </Col>
-          ))}
-        </Row>
+        <>
+          <Row>
+            {products.map((item) => (
+              <Col lg={4} key={item.id} className="mb-4">
+                <CardProduct product={item} />
+              </Col>
+            ))}
+          </Row>
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
+            <Pagination
+              current={currentPage}
+              total={products.length}
+              pageSize={productsPerPage}
+              onChange={handlePageChange}
+              showSizeChanger={false}
+            />
+          </div>
+        </>
       ) : (
         <div className="text-center" style={{ padding: '50px' }}>
           Không có sản phẩm nào để hiển thị.

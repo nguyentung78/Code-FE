@@ -1,4 +1,3 @@
-// src/pages/user/CheckoutSuccess.js
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Spin, Alert, Button } from 'antd';
@@ -11,37 +10,47 @@ const CheckoutSuccess = () => {
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
+  const [isProcessed, setIsProcessed] = useState(false); // Biến kiểm soát trạng thái xử lý
 
   useEffect(() => {
     const completePayment = async () => {
       const paymentId = searchParams.get('paymentId');
       const payerId = searchParams.get('PayerID');
       const orderId = searchParams.get('orderId');
-  
+
       if (!paymentId || !payerId || !orderId) {
         toast.error('Thông tin thanh toán không hợp lệ!');
+        setLoading(false);
         navigate('/user-home');
         return;
       }
-  
+
+      if (isProcessed) return; // Ngăn gọi lại API nếu đã xử lý
+
+      setIsProcessed(true); // Đánh dấu đã xử lý
       try {
-        // Không cần thêm header Authorization vì interceptor đã xử lý,
-        // nhưng endpoint permitAll nên không cần token
         const response = await BASE_URL.get(
           `/user/cart/checkout/success?paymentId=${paymentId}&PayerID=${payerId}&orderId=${orderId}`
         );
         setMessage(response.data || 'Thanh toán thành công!');
         toast.success('Thanh toán thành công!');
       } catch (error) {
-        setMessage(error.response?.data || 'Lỗi khi hoàn tất thanh toán!');
-        toast.error(error.response?.data || 'Lỗi khi hoàn tất thanh toán!');
+        const errorMessage = error.response?.data || 'Lỗi khi hoàn tất thanh toán!';
+        // Không hiển thị thông báo lỗi nếu đơn hàng đã được xác nhận
+        if (errorMessage.includes('đã được xác nhận trước đó')) {
+          setMessage('Thanh toán thành công! Đơn hàng đã được xác nhận.');
+          toast.success('Thanh toán thành công!');
+        } else {
+          setMessage(errorMessage);
+          toast.error(errorMessage);
+        }
       } finally {
         setLoading(false);
       }
     };
-  
+
     completePayment();
-  }, [navigate, searchParams]);
+  }, [navigate, searchParams]); // Xóa `isProcessed` khỏi dependency để tránh lặp
 
   if (loading) {
     return (

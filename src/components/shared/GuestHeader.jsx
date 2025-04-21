@@ -1,23 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { Container, Navbar, Nav, Form, FormControl } from 'react-bootstrap';
 import { Avatar, Dropdown as AntDropdown } from 'antd';
-import { ShoppingCartOutlined, UserOutlined } from '@ant-design/icons';
+import { UserOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import Cookies from 'js-cookie';
 import { toast } from 'react-toastify';
-import { useSelector, useDispatch } from 'react-redux';
-import { Badge } from 'antd';
-import GuestCartModal from './GuestCartModal';
-import { updateGuestQuantity, removeFromGuestCart } from '../../redux/guestCartSlice';
+import { logout } from '../../services/authService'; 
 
 function GuestHeader() {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
   const [userInfo, setUserInfo] = useState(null);
   const [isScrolled, setIsScrolled] = useState(false);
-  const [cartVisible, setCartVisible] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState('');
-  const cartItems = useSelector((state) => state.guestCart.items); 
 
   useEffect(() => {
     const handleScroll = () => {
@@ -35,7 +29,7 @@ function GuestHeader() {
         setUserInfo(JSON.parse(storedUserInfo));
       }
     } else {
-      setUserInfo(null); // Nếu không có token, đảm bảo userInfo là null
+      setUserInfo(null);
     }
   }, [navigate]);
 
@@ -51,6 +45,18 @@ function GuestHeader() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await logout(); // Gọi API đăng xuất
+      setUserInfo(null);
+      toast.success('Đăng xuất thành công!');
+      navigate('/login');
+    } catch (error) {
+      toast.error('Lỗi khi đăng xuất, vui lòng thử lại!');
+      console.error(error);
+    }
+  };
+
   const accountMenu = {
     items: userInfo
       ? [
@@ -58,36 +64,13 @@ function GuestHeader() {
           {
             key: 'logout',
             label: 'Đăng xuất',
-            onClick: () => {
-              Cookies.remove('token');
-              Cookies.remove('roles');
-              localStorage.removeItem('userInfo');
-              setUserInfo(null);
-              toast.success('Đăng xuất thành công!');
-              navigate('/login');
-            },
+            onClick: handleLogout, // Sử dụng hàm handleLogout
           },
         ]
       : [
           { key: 'login', label: <Link to="/login">Đăng nhập</Link> },
           { key: 'register', label: <Link to="/register">Đăng ký</Link> },
         ],
-  };
-
-  const cartItemCount = cartItems.reduce((total, item) => total + item.quantity, 0);
-
-  const updateQuantityHandler = (productId, quantity) => {
-    dispatch(updateGuestQuantity({ productId, quantity })); // Sử dụng action từ guestCartSlice
-  };
-
-  const removeFromCartHandler = (productId) => {
-    dispatch(removeFromGuestCart(productId)); // Sử dụng action từ guestCartSlice
-  };
-
-  const handleCheckout = () => {
-    toast.info('Vui lòng đăng nhập để thanh toán!');
-    setCartVisible(false);
-    navigate('/login'); // Chuyển hướng đến trang đăng nhập user
   };
 
   return (
@@ -143,20 +126,7 @@ function GuestHeader() {
             )}
           </Nav.Link>
         </AntDropdown>
-        <Nav.Link onClick={() => setCartVisible(true)} style={{ cursor: 'pointer' }}>
-          <Badge count={cartItemCount}>
-            <ShoppingCartOutlined style={{ fontSize: '24px', color: '#1890ff' }} />
-          </Badge>
-        </Nav.Link>
       </Container>
-      <GuestCartModal
-        visible={cartVisible}
-        onClose={() => setCartVisible(false)}
-        cart={cartItems.map((item) => ({ ...item.product, quantity: item.quantity }))}
-        updateQuantity={updateQuantityHandler}
-        removeFromCart={removeFromCartHandler}
-        onCheckout={handleCheckout}
-      />
     </Navbar>
   );
 }

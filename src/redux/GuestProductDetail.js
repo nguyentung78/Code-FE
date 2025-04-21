@@ -50,7 +50,7 @@ const GuestProductDetail = () => {
   const handleCheckout = () => {
     toast.info('Vui lòng đăng nhập để thanh toán!');
     setCartVisible(false);
-    navigate('/login-user');
+    navigate('/login');
   };
 
   if (loading) {

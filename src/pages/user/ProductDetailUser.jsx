@@ -26,7 +26,7 @@ function ProductDetailUser() {
 
     if (!token || !roles.includes('USER')) {
       toast.error('Vui lòng đăng nhập với tài khoản người dùng để xem chi tiết sản phẩm!');
-      navigate('/login-user');
+      navigate('/login');
       return;
     }
 

@@ -10,7 +10,7 @@ import { Badge } from 'antd';
 import UserCartModal from './UserCartModal';
 import { fetchUserCart } from '../../redux/userCartSlice';
 import { logout } from '../../services/authService';
-import userService from '../../services/userService'; // Import userService để gọi API
+import userService from '../../services/userService';
 
 function UserHeader() {
   const navigate = useNavigate();
@@ -21,33 +21,40 @@ function UserHeader() {
   const [searchKeyword, setSearchKeyword] = useState('');
   const cartItems = useSelector((state) => state.userCart.items || []);
 
-  // Hàm để lấy thông tin người dùng
-  // Trong UserHeader
-const fetchUserInfo = async () => {
-  const token = Cookies.get('token');
-  if (token) {
-    try {
-      const response = await userService.getUserProfile();
-      const userData = response.data;
-      console.log('User data:', userData);
-      setUserInfo(userData);
-      localStorage.setItem('userInfo', JSON.stringify(userData));
-    } catch (error) {
-      console.error('Lỗi khi lấy thông tin người dùng:', error);
+  const fetchUserInfo = async () => {
+    const token = Cookies.get('token');
+    if (token) {
+      try {
+        const response = await userService.getUserProfile();
+        const userData = response.data;
+        setUserInfo(userData);
+        localStorage.setItem('userInfo', JSON.stringify(userData));
+      } catch (error) {
+        if (error.response?.status === 401) {
+          toast.error('Vui lòng đăng nhập!');
+          navigate('/login');
+        } else {
+          console.error('Lỗi khi lấy thông tin người dùng:', error);
+          setUserInfo(null);
+          localStorage.removeItem('userInfo');
+        }
+      }
+    } else {
       setUserInfo(null);
       localStorage.removeItem('userInfo');
+      navigate('/login'); // Chuyển hướng nếu không có token
     }
-  } else {
-    setUserInfo(null);
-    localStorage.removeItem('userInfo');
-  }
-};
+  };
 
   useEffect(() => {
-    fetchUserInfo(); // Gọi API để lấy thông tin người dùng khi component mount
-    dispatch(fetchUserCart()); // Lấy giỏ hàng từ API
+    const token = Cookies.get('token');
+    if (token) {
+      fetchUserInfo();
+      dispatch(fetchUserCart()); // Chỉ gọi fetchUserCart nếu có token
+    } else {
+      navigate('/login'); // Chuyển hướng nếu không có token
+    }
 
-    // Lắng nghe sự kiện storage để phát hiện thay đổi trong localStorage
     const handleStorageChange = () => {
       const storedUserInfo = localStorage.getItem('userInfo');
       if (storedUserInfo) {
@@ -59,7 +66,7 @@ const fetchUserInfo = async () => {
 
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, [dispatch]);
+  }, [dispatch, navigate]);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 0);
@@ -79,12 +86,17 @@ const fetchUserInfo = async () => {
     }
   };
 
-  const handleLogout = () => {
-    logout();
-    toast.success('Đăng xuất thành công!');
-    setUserInfo(null); // Xóa userInfo khi đăng xuất
-    localStorage.removeItem('userInfo'); // Xóa localStorage
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      await logout();
+      setUserInfo(null);
+      localStorage.removeItem('userInfo');
+      toast.success('Đăng xuất thành công!');
+      navigate('/login');
+    } catch (error) {
+      toast.error('Lỗi khi đăng xuất, vui lòng thử lại!');
+      console.error(error);
+    }
   };
 
   const accountMenu = {

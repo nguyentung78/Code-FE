@@ -21,7 +21,15 @@ export const fetchOrderDetail = createAsyncThunk('orderUser/fetchOrderDetail', a
     const response = await BASE_URL.get(`/user/history/${serialNumber}`, {
       headers: { Authorization: `Bearer ${Cookies.get('token')}` },
     });
-    return response.data;
+    // Ánh xạ dữ liệu để đảm bảo item có productName
+    const mappedData = {
+      ...response.data,
+      items: response.data.items.map(item => ({
+        ...item,
+        productName: item.productName || item.product?.productName || 'Không có tên sản phẩm', // Đảm bảo productName luôn tồn tại
+      })),
+    };
+    return mappedData;
   } catch (error) {
     return rejectWithValue(error.response?.data || 'Lỗi khi lấy chi tiết đơn hàng');
   }

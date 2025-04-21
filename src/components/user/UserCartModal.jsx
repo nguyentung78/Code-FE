@@ -6,7 +6,7 @@ import {
   fetchUserCart,
   updateUserCartQuantity,
   removeFromUserCart,
-  clearUserCart, // Import action clearUserCart
+  clearUserCart,
 } from '../../redux/userCartSlice';
 
 const UserCartModal = ({ visible, onClose }) => {
@@ -35,12 +35,12 @@ const UserCartModal = ({ visible, onClose }) => {
 
   const handleClearCart = () => {
     if (items.length === 0) {
-      return; // Không làm gì nếu giỏ hàng đã rỗng
+      return;
     }
     dispatch(clearUserCart())
       .unwrap()
       .then(() => {
-        // Đã có thông báo trong userCartSlice
+        // Thông báo đã có trong userCartSlice
       })
       .catch((error) => {
         console.error('Lỗi khi xóa toàn bộ giỏ hàng:', error);

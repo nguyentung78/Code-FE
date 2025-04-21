@@ -28,7 +28,7 @@ const Checkout = () => {
 
     if (!token || !roles.includes('USER')) {
       toast.error('Vui lòng đăng nhập với tài khoản người dùng để thanh toán!');
-      navigate('/login-user');
+      navigate('/login');
       return;
     }
 
@@ -124,7 +124,7 @@ const Checkout = () => {
             // Xử lý COD
             toast.success('Đặt hàng thành công!');
             dispatch(clearUserCart());
-            navigate('/user-home'); // Hoặc trang lịch sử đơn hàng
+            navigate('/user-home'); 
           }
         } catch (error) {
           toast.error(error.response?.data || 'Lỗi khi đặt hàng!');

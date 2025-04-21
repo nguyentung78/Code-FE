@@ -10,7 +10,7 @@ import Register from '../pages/guest/Register';
 import LoginAdmin from '../pages/admin/LoginAdmin';
 import GuestHeader from '../components/shared/GuestHeader';
 import UserHeader from '../components/user/UserHeader';
-import Checkout from '../components/user/Checkout'; // Thêm import
+import Checkout from '../components/user/Checkout'; 
 import Cookies from 'js-cookie';
 
 // Component bảo vệ route cho User (yêu cầu đăng nhập)

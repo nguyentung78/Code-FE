@@ -22,6 +22,9 @@ export const fetchUserCart = createAsyncThunk('userCart/fetchUserCart', async (_
     }));
     return mappedData;
   } catch (error) {
+    if (error.response?.status === 401) {
+      return rejectWithValue('Vui lòng đăng nhập!');
+    }
     return rejectWithValue(error.response?.data?.message || 'Lỗi khi lấy giỏ hàng');
   }
 });
@@ -32,7 +35,6 @@ export const addToUserCart = createAsyncThunk('userCart/addToUserCart', async ({
     const response = await BASE_URL.post('/user/cart/add', { productId, quantity }, {
       headers: { Authorization: `Bearer ${Cookies.get('token')}` },
     });
-    // Nếu API trả về toàn bộ danh sách
     if (Array.isArray(response.data)) {
       const mappedData = response.data.map(item => ({
         cartItemId: item.id,
@@ -46,9 +48,7 @@ export const addToUserCart = createAsyncThunk('userCart/addToUserCart', async ({
         quantity: item.quantity,
       }));
       return mappedData;
-    }
-    // Nếu API chỉ trả về item vừa thêm
-    else if (response.data && response.data.id) {
+    } else if (response.data && response.data.id) {
       return {
         cartItemId: response.data.id,
         product: {
@@ -60,9 +60,7 @@ export const addToUserCart = createAsyncThunk('userCart/addToUserCart', async ({
         },
         quantity: response.data.quantity,
       };
-    }
-    // Nếu API không trả về dữ liệu, gọi lại fetchUserCart
-    else {
+    } else {
       const fetchResponse = await BASE_URL.get('/user/cart/list', {
         headers: { Authorization: `Bearer ${Cookies.get('token')}` },
       });
@@ -80,6 +78,9 @@ export const addToUserCart = createAsyncThunk('userCart/addToUserCart', async ({
       return mappedData;
     }
   } catch (error) {
+    if (error.response?.status === 401) {
+      return rejectWithValue('Vui lòng đăng nhập!');
+    }
     return rejectWithValue(error.response?.data?.message || 'Lỗi khi thêm vào giỏ hàng');
   }
 });
@@ -108,10 +109,10 @@ export const updateUserCartQuantity = createAsyncThunk('userCart/updateUserCartQ
         cartItemId: response.data.id,
         product: {
           id: response.data.productId,
-          productName: item.productName,
-          unitPrice: item.unitPrice,
-          image: item.image,
-          stockQuantity: item.stockQuantity || 0,
+          productName: response.data.productName,
+          unitPrice: response.data.unitPrice,
+          image: response.data.image,
+          stockQuantity: response.data.stockQuantity || 0,
         },
         quantity: response.data.quantity,
       };
@@ -133,7 +134,10 @@ export const updateUserCartQuantity = createAsyncThunk('userCart/updateUserCartQ
       return mappedData;
     }
   } catch (error) {
-    return rejectWithValue(error.response?.data?.message || 'Lỗi khi cập nhật số lượng');
+    if (error.response?.status === 401) {
+      return rejectWithValue('Vui lòng đăng nhập!');
+    }
+    return rejectWithValue(error.response?.data?.message || 'Lỗi khi cập nhật số lượng do số lượng hàng trong kho không đủ');
   }
 });
 
@@ -145,6 +149,9 @@ export const removeFromUserCart = createAsyncThunk('userCart/removeFromUserCart'
     });
     return cartItemId;
   } catch (error) {
+    if (error.response?.status === 401) {
+      return rejectWithValue('Vui lòng đăng nhập!');
+    }
     return rejectWithValue(error.response?.data?.message || 'Lỗi khi xóa sản phẩm');
   }
 });
@@ -157,6 +164,9 @@ export const clearUserCart = createAsyncThunk('userCart/clearUserCart', async (_
     });
     return [];
   } catch (error) {
+    if (error.response?.status === 401) {
+      return rejectWithValue('Vui lòng đăng nhập!');
+    }
     return rejectWithValue(error.response?.data?.message || 'Lỗi khi xóa giỏ hàng');
   }
 });
@@ -196,12 +206,10 @@ const userCartSlice = createSlice({
       .addCase(addToUserCart.fulfilled, (state, action) => {
         state.loading = false;
         if (Array.isArray(action.payload)) {
-          state.items = action.payload; // API trả về toàn bộ danh sách
+          state.items = action.payload;
         } else {
-          // API trả về item vừa thêm
           state.items.push(action.payload);
         }
-        toast.success('Đã thêm vào giỏ hàng!');
       })
       .addCase(addToUserCart.rejected, (state, action) => {
         state.loading = false;

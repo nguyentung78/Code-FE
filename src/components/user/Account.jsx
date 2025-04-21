@@ -50,26 +50,22 @@ const Account = () => {
   const [profileForm] = Form.useForm();
   const [passwordForm] = Form.useForm();
   const [addressForm] = Form.useForm();
-  const [fileList, setFileList] = useState([]);
+  const [fileList, setFileList] = useState();
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1); // Trang hiện tại (bắt đầu từ 1)
-  const handleLogoutAndRedirect = (reason) => {
-    Cookies.remove('token'); // Xóa token khỏi cookie
-    navigate('/login-user', {
-      state: { message: reason },
-    }); // Chuyển hướng đến trang đăng nhập với thông báo
-  };
+  const [currentPage, setCurrentPage] = useState(1);
+  const [activeTab, setActiveTab] = useState('1');
+
   useEffect(() => {
     const token = Cookies.get('token');
     if (!token) {
       toast.error('Vui lòng đăng nhập để xem thông tin tài khoản!');
-      navigate('/login-user');
+      navigate('/login');
       return;
     }
     dispatch(fetchUserProfile());
     dispatch(fetchAddresses());
-    dispatch(fetchWishList({ page: currentPage - 1, size: 10 })); // Gọi API với phân trang
+    dispatch(fetchWishList({ page: currentPage - 1, size: 10 }));
     dispatch(fetchOrderHistory());
   }, [dispatch, navigate, currentPage]);
 
@@ -94,8 +90,8 @@ const Account = () => {
     Object.keys(values).forEach((key) => {
       if (values[key]) formData.append(key, values[key]);
     });
-    if (fileList.length > 0 && fileList[0].originFileObj) {
-      formData.append('avatar', fileList[0].originFileObj);
+    if (fileList) {
+      formData.append('avatar', fileList);
     }
     try {
       await dispatch(updateUserProfile(formData)).unwrap();
@@ -143,7 +139,7 @@ const Account = () => {
     dispatch(removeFromWishList(productId))
       .then(() => {
         toast.success('Đã xóa sản phẩm khỏi danh sách yêu thích!');
-        dispatch(fetchWishList({ page: currentPage - 1, size: 10 })); // Cập nhật lại danh sách
+        dispatch(fetchWishList({ page: currentPage - 1, size: 10 }));
       })
       .catch(() => toast.error('Lỗi khi xóa sản phẩm!'));
   };
@@ -175,10 +171,9 @@ const Account = () => {
   const uploadProps = {
     onRemove: () => setFileList([]),
     beforeUpload: (file) => {
-      setFileList([file]);
+      setFileList(file);
       return false;
     },
-    fileList,
   };
 
   const orderColumns = [
@@ -241,61 +236,63 @@ const Account = () => {
     );
   }
 
+  const sortedOrders = [...orders].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); // Sắp xếp đơn hàng
+
   return (
     <div style={{ padding: '20px', maxWidth: '1000px', margin: '0 auto' }}>
       <Title level={2} style={{ textAlign: 'center', marginBottom: '20px' }}>
         Quản lý tài khoản
       </Title>
 
-      <Tabs defaultActiveKey="1">
-      <TabPane tab="Danh sách yêu thích" key="1">
-  {wishList.length === 0 ? (
-    <Alert message="Danh sách yêu thích trống!" type="info" showIcon />
-  ) : (
-    <>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
-        {wishList.map((item) => (
-          <Card
-            key={item.productId}
-            style={{ width: 300 }} // Giữ chiều rộng cố định
-            cover={
-              <Image
-                src={item.image || 'https://via.placeholder.com/150'}
-                alt={item.productName}
-                style={{
-                  width: '100%', // Chiều rộng full thẻ Card
-                  height: '200px', // Chiều cao cố định giống CardProduct
-                  objectFit: 'cover', // Giữ tỷ lệ ảnh
-                  padding: '10px', // Khoảng cách padding giống CardProduct
-                }}
+      <Tabs activeKey={activeTab} onChange={setActiveTab}>
+        <TabPane tab="Danh sách yêu thích" key="1">
+          {wishList.length === 0 ? (
+            <Alert message="Danh sách yêu thích trống!" type="info" showIcon />
+          ) : (
+            <>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
+                {wishList.map((item) => (
+                  <Card
+                    key={item.productId}
+                    style={{ width: 300 }}
+                    cover={
+                      <Image
+                        src={item.image || 'https://via.placeholder.com/150'}
+                        alt={item.productName}
+                        style={{
+                          width: '100%',
+                          height: '200px',
+                          objectFit: 'cover',
+                          padding: '10px',
+                        }}
+                      />
+                    }
+                    actions={[
+                      <Button type="link" onClick={() => navigate(`/user/product-detail/${item.productId}`)}>
+                        Xem chi tiết
+                      </Button>,
+                      <Button type="link" danger onClick={() => handleRemoveFromWishList(item.productId)}>
+                        Xóa
+                      </Button>,
+                    ]}
+                  >
+                    <Card.Meta
+                      title={item.productName}
+                      description={`${item.unitPrice?.toLocaleString('vi-VN')} VNĐ`}
+                    />
+                  </Card>
+                ))}
+              </div>
+              <Pagination
+                current={currentPage}
+                pageSize={size}
+                total={totalElements}
+                onChange={handlePageChange}
+                style={{ marginTop: '20px', textAlign: 'center' }}
               />
-            }
-            actions={[
-              <Button type="link" onClick={() => navigate(`/user/product-detail/${item.productId}`)}>
-                Xem chi tiết
-              </Button>,
-              <Button type="link" danger onClick={() => handleRemoveFromWishList(item.productId)}>
-                Xóa
-              </Button>,
-            ]}
-          >
-            <Card.Meta
-              title={item.productName}
-              description={`${item.unitPrice?.toLocaleString('vi-VN')} VNĐ`}
-            />
-          </Card>
-        ))}
-      </div>
-      <Pagination
-        current={currentPage}
-        pageSize={size}
-        total={totalElements}
-        onChange={handlePageChange}
-        style={{ marginTop: '20px', textAlign: 'center' }}
-      />
-    </>
-  )}
-</TabPane>
+            </>
+          )}
+        </TabPane>
 
         <TabPane tab="Thông tin cá nhân" key="2">
           <Form form={profileForm} layout="vertical" onFinish={onProfileFinish}>
@@ -442,10 +439,15 @@ const Account = () => {
         </TabPane>
 
         <TabPane tab="Quản lý đơn hàng" key="5">
-          {orders.length === 0 ? (
+          {sortedOrders.length === 0 ? (
             <Alert message="Bạn chưa có đơn hàng nào!" type="info" showIcon />
           ) : (
-            <Table columns={orderColumns} dataSource={orders} rowKey="id" pagination={{ pageSize: 5 }} />
+            <Table
+              columns={orderColumns}
+              dataSource={sortedOrders}
+              rowKey="id"
+              pagination={{ pageSize: 5 }}
+            />
           )}
         </TabPane>
       </Tabs>
@@ -490,7 +492,7 @@ const Account = () => {
             <Title level={4}>Danh sách sản phẩm</Title>
             {orderDetail.items.map((item) => (
               <div key={item.productId} style={{ marginBottom: '16px' }}>
-                <Text strong>{item.name}</Text>
+                <Text strong>{item.productName}</Text>
                 <br />
                 <Text>Giá: {item.unitPrice.toLocaleString('vi-VN')} VNĐ</Text>
                 <br />

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Button from 'react-bootstrap/Button';
 import Card from 'react-bootstrap/Card';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { FaStar, FaShoppingCart, FaHeart, FaRegHeart } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { useDispatch, useSelector } from 'react-redux';
@@ -10,6 +10,7 @@ import Cookies from 'js-cookie';
 
 function CardProduct({ product, onAddToCart }) {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const location = useLocation();
   const isUser = location.pathname.startsWith('/user');
   const { wishList } = useSelector((state) => state.wishList);
@@ -17,7 +18,7 @@ function CardProduct({ product, onAddToCart }) {
 
   useEffect(() => {
     if (isUser && Cookies.get('token')) {
-      dispatch(fetchWishList({ page: 0, size: 10 })); // Gọi với phân trang
+      dispatch(fetchWishList({ page: 0, size: 10 }));
     }
   }, [dispatch, isUser]);
 
@@ -26,6 +27,15 @@ function CardProduct({ product, onAddToCart }) {
   }, [wishList, product.id]);
 
   const handleAddToCart = () => {
+    const token = Cookies.get('token');
+    const roles = Cookies.get('roles') ? JSON.parse(Cookies.get('roles')) : [];
+
+    if (!token || !roles.includes('USER')) {
+      toast.info('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng!');
+      navigate('/login');
+      return;
+    }
+
     onAddToCart(product);
   };
 
@@ -102,9 +112,6 @@ function CardProduct({ product, onAddToCart }) {
           <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#ff4d4d', marginRight: '10px' }}>
             {product.unitPrice?.toLocaleString('vi-VN')}đ
           </span>
-          {/* <span style={{ fontSize: '14px', color: '#888', textDecoration: 'line-through' }}>
-            {product.originalPrice?.toLocaleString('vi-VN')}đ
-          </span> */}
           {product.originalPrice && (
             <span
               style={{
@@ -132,6 +139,7 @@ function CardProduct({ product, onAddToCart }) {
           <Button
             variant="outline-primary"
             onClick={handleAddToCart}
+            disabled={product.stockQuantity === 0}
             style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
             <FaShoppingCart style={{ marginRight: '5px' }} />

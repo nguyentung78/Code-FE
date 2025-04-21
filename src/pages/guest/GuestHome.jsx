@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Col, Container, Row } from 'react-bootstrap';
 import CardProduct from '../../components/shared/CardProduct';
-import GuestCartModal from '../../components/shared/GuestCartModal'; // Sử dụng GuestCartModal
 import { toast } from 'react-toastify';
 import { Spin, Pagination } from 'antd';
 import { BASE_URL } from '../../api/index';
@@ -10,8 +9,6 @@ import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
 import { MenuFoldOutlined, MenuUnfoldOutlined, ShopOutlined, LaptopOutlined, PhoneOutlined, GiftOutlined, ToolOutlined, SkinOutlined, HomeOutlined } from '@ant-design/icons';
 import { Menu } from 'antd';
-import { useDispatch, useSelector } from 'react-redux';
-import { addToGuestCart, updateGuestQuantity, removeFromGuestCart } from '../../redux/guestCartSlice'; // Sử dụng guestCartSlice
 
 function GuestHome() {
   const [products, setProducts] = useState([]);
@@ -20,11 +17,8 @@ function GuestHome() {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [loading, setLoading] = useState(false);
   const [collapsed, setCollapsed] = useState(true);
-  const [cartVisible, setCartVisible] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const productsPerPage = 9;
-  const dispatch = useDispatch();
-  const cart = useSelector((state) => state.guestCart.items); // Sử dụng guestCart
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -43,9 +37,9 @@ function GuestHome() {
     const fetchProducts = async () => {
       setLoading(true);
       try {
-        let url = '/public/products?page=0&size=1000';
+        let url = `/public/products?page=${currentPage - 1}&size=${productsPerPage}`;
         if (selectedCategory) {
-          url = `/public/products/categories/${selectedCategory}`;
+          url = `/public/products/categories/${selectedCategory}?page=${currentPage - 1}&size=${productsPerPage}`;
         }
         const response = await BASE_URL.get(url);
         setProducts(
@@ -80,25 +74,7 @@ function GuestHome() {
 
     fetchProducts();
     fetchFeaturedProducts();
-  }, [selectedCategory]);
-
-  const addToCartHandler = (product) => {
-    dispatch(addToGuestCart({ product, quantity: 1 })); // Sử dụng addToGuestCart
-    toast.success(`${product.productName} đã được thêm vào giỏ hàng!`);
-  };
-
-  const updateQuantityHandler = (productId, quantity) => {
-    dispatch(updateGuestQuantity({ productId, quantity })); // Sử dụng updateGuestQuantity
-  };
-
-  const removeFromCartHandler = (productId) => {
-    dispatch(removeFromGuestCart(productId)); // Sử dụng removeFromGuestCart
-  };
-
-  const handleCheckout = () => {
-    toast.info('Vui lòng đăng nhập để thanh toán!');
-    setCartVisible(false);
-  };
+  }, [selectedCategory, currentPage]);
 
   const sliderSettings = {
     dots: true,
@@ -193,7 +169,7 @@ function GuestHome() {
             display: flex;
             justify-content: center;
           }
-          .content-inner { max-width: 1200px; width: 100%; }
+          .content-inner { maxWidth: 1200px; width: 100%; }
           .category-header {
             display: flex;
             justify-content: center;
@@ -221,15 +197,6 @@ function GuestHome() {
         `}
       </style>
 
-      <GuestCartModal
-        visible={cartVisible}
-        onClose={() => setCartVisible(false)}
-        cart={cart.map((item) => ({ ...item.product, quantity: item.quantity }))}
-        updateQuantity={updateQuantityHandler}
-        removeFromCart={removeFromCartHandler}
-        onCheckout={handleCheckout} // Thêm handleCheckout
-      />
-
       <div style={{ marginBottom: '20px' }}>
         <Slider {...sliderSettings}>
           {banners.map((banner, index) => (
@@ -254,7 +221,7 @@ function GuestHome() {
             onClick={({ key }) => handleCategoryClick(key === 'all' ? null : key)}
           />
         </div>
-        
+
         <div className="content">
           <div className="content-inner">
             <div className="category-header">
@@ -269,7 +236,7 @@ function GuestHome() {
                 <Row>
                   {currentProducts.map((item) => (
                     <Col lg={4} key={item.id} className="mb-4">
-                      <CardProduct product={item} onAddToCart={addToCartHandler} />
+                      <CardProduct product={item} />
                     </Col>
                   ))}
                 </Row>
@@ -301,7 +268,7 @@ function GuestHome() {
           <Row>
             {featuredProducts.map((item) => (
               <Col lg={4} key={item.id} className="mb-4">
-                <CardProduct product={item} onAddToCart={addToCartHandler} />
+                <CardProduct product={item} />
               </Col>
             ))}
           </Row>

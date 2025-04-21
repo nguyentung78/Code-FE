@@ -1,4 +1,3 @@
-// src/pages/admin/LoginAdmin.jsx
 import { LockOutlined, UserOutlined } from '@ant-design/icons';
 import {
   LoginForm,
@@ -10,32 +9,29 @@ import { theme } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { login } from '../../services/authService';
 import { toast } from 'react-toastify';
-import Cookies from 'js-cookie'; // Thêm import Cookies để kiểm tra roles
+import Cookies from 'js-cookie';
 
 export default function LoginAdmin() {
   const { token } = theme.useToken();
   const navigate = useNavigate();
 
-  const handleLogin = (values) => {
-    login(values)
-      .then((res) => {
-        console.log('Login response:', res); // Log để kiểm tra response
-        const roles = Cookies.get('roles') ? JSON.parse(Cookies.get('roles')) : [];
-        console.log('Roles from cookies:', roles); // Log để kiểm tra roles
-        const hasAdminRights = roles.some(
-          (role) => role === 'ADMIN' || role === 'MANAGER'
-        );
-        if (!hasAdminRights) {
-          toast.error('Người dùng không có quyền đăng nhập vào trang này!');
-          return;
-        }
-        toast.success('Đăng nhập thành công!');
-        navigate('/admin/category');
-      })
-      .catch((err) => {
-        console.error('Login error:', err.response?.data); // Log lỗi chi tiết
-        toast.error(err.response?.data || 'Đăng nhập thất bại!');
-      });
+  const handleLogin = async (values) => {
+    try {
+      const res = await login(values);
+      const roles = Cookies.get('roles') ? JSON.parse(Cookies.get('roles')) : [];
+      const hasAdminRights = roles.some(
+        (role) => role === 'ADMIN' || role === 'MANAGER'
+      );
+      if (!hasAdminRights) {
+        toast.error('Người dùng không có quyền đăng nhập vào trang này!');
+        return;
+      }
+      toast.success('Đăng nhập thành công!');
+      navigate('/admin/category');
+    } catch (err) {
+      const errorMessage = err.response?.data; // Lấy thông báo lỗi từ BE
+      toast.error(errorMessage || 'Tên đăng nhập hoặc mật khẩu không đúng!');
+    }
   };
 
   return (
@@ -111,22 +107,6 @@ export default function LoginAdmin() {
               },
             ]}
           />
-          {/* <div
-            style={{
-              marginBlockEnd: 24,
-            }}
-          >
-            <ProFormCheckbox noStyle name="autoLogin">
-              Tự động đăng nhập
-            </ProFormCheckbox>
-            <a
-              style={{
-                float: 'right',
-              }}
-            >
-              Quên mật khẩu
-            </a>
-          </div> */}
         </LoginForm>
       </div>
     </ProConfigProvider>

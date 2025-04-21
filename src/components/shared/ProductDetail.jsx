@@ -1,27 +1,43 @@
 import React from 'react';
 import { Card, Row, Col, Typography, Button, Tag, Space } from 'antd';
 import { ShoppingCartOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import Cookies from 'js-cookie';
 
 const { Title, Text, Paragraph } = Typography;
 
 const ProductDetail = ({ product, onAddToCart }) => {
+  const navigate = useNavigate();
+
   if (!product) {
     return <div>Đang tải...</div>;
   }
 
+  const handleAddToCart = () => {
+    const token = Cookies.get('token');
+    const roles = Cookies.get('roles') ? JSON.parse(Cookies.get('roles')) : [];
+
+    if (!token || !roles.includes('USER')) {
+      toast.info('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng!');
+      navigate('/login');
+      return;
+    }
+
+    onAddToCart(product);
+  };
+
   return (
     <Card style={{ margin: '20px auto', maxWidth: 1200, borderRadius: 10, boxShadow: '0 4px 8px rgba(0,0,0,0.1)' }}>
       <Row gutter={[24, 24]}>
-        {/* Hình ảnh sản phẩm */}
         <Col xs={24} md={12}>
           <img
-            src={product.image || 'https://via.placeholder.com/500'} // Hình ảnh mặc định nếu không có
+            src={product.image || 'https://via.placeholder.com/500'}
             alt={product.productName}
             style={{ width: '100%', maxWidth: 500, borderRadius: 8, objectFit: 'cover' }}
           />
         </Col>
 
-        {/* Thông tin sản phẩm */}
         <Col xs={24} md={12}>
           <Title level={2} style={{ color: '#2c3e50' }}>{product.productName}</Title>
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
@@ -53,7 +69,7 @@ const ProductDetail = ({ product, onAddToCart }) => {
               type="primary"
               size="large"
               icon={<ShoppingCartOutlined />}
-              onClick={onAddToCart}
+              onClick={handleAddToCart}
               disabled={product.stockQuantity === 0}
               style={{ borderRadius: 5, padding: '0 20px' }}
             >
