@@ -3,7 +3,7 @@ import Products from "../pages/admin/Products";
 import Orders from "../pages/admin/Orders";
 import Users from "../pages/admin/Users";
 import Reports from "../pages/admin/Reports";
-
+import AdminReviewManagement from "../pages/admin/AdminReviewManagement";
 export const privateRoutes = [
   {
     path: "/admin/category",
@@ -24,5 +24,8 @@ export const privateRoutes = [
   {
     path: "/admin/reports",
     element: Reports,
+  },
+  { path: "/admin/reviews", 
+    element: AdminReviewManagement, 
   },
 ];

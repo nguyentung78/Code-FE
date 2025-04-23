@@ -19,6 +19,8 @@ import {
   Card,
   Image,
   Pagination,
+  Rate,
+  Select,
 } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import Cookies from 'js-cookie';
@@ -35,26 +37,33 @@ import {
 } from '../../redux/accountSlice';
 import { fetchWishList, removeFromWishList } from '../../redux/wishListSlice';
 import { fetchOrderHistory, cancelOrder, fetchOrderDetail } from '../../redux/orderUserSlice';
+import reviewService from '../../services/reviewService';
 
 const { TabPane } = Tabs;
 const { Title, Text } = Typography;
+const { Option } = Select;
 
 const Account = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
   const { profile, addresses, loading: accountLoading, error: accountError } = useSelector((state) => state.account);
-  const { wishList, page, size, totalElements, totalPages, loading: wishListLoading, error: wishListError } = useSelector((state) => state.wishList);
+  const { wishList, page, size, totalElements, totalPages, loading: wishListLoading, error: wishListError } = useSelector(
+    (state) => state.wishList
+  );
   const { orders, orderDetail, loading: orderLoading, error: orderError } = useSelector((state) => state.orderUser);
 
   const [profileForm] = Form.useForm();
   const [passwordForm] = Form.useForm();
   const [addressForm] = Form.useForm();
+  const [reviewForm] = Form.useForm();
   const [fileList, setFileList] = useState();
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isReviewModalVisible, setIsReviewModalVisible] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [activeTab, setActiveTab] = useState('1');
+  const [reviewError, setReviewError] = useState(null);
 
   useEffect(() => {
     const token = Cookies.get('token');
@@ -163,9 +172,36 @@ const Account = () => {
     dispatch(fetchOrderDetail(serialNumber)).then(() => setIsModalVisible(true));
   };
 
+  const handleReviewOrder = (serialNumber) => {
+    setSelectedOrder(serialNumber);
+    dispatch(fetchOrderDetail(serialNumber)).then(() => setIsReviewModalVisible(true));
+  };
+
   const handleModalClose = () => {
     setIsModalVisible(false);
+    setIsReviewModalVisible(false);
     setSelectedOrder(null);
+    setReviewError(null);
+    reviewForm.resetFields();
+  };
+
+  const handleSubmitReview = async (values) => {
+    setReviewError(null);
+    try {
+      await reviewService.submitReview(values.productId, {
+        rating: values.rating,
+        comment: values.comment,
+      });
+      toast.success('Gửi đánh giá thành công!');
+      setIsReviewModalVisible(false);
+      reviewForm.resetFields();
+      // Làm mới chi tiết đơn hàng để cập nhật trạng thái isReviewed
+      dispatch(fetchOrderDetail(selectedOrder));
+    } catch (error) {
+      const errorMessage = error.response?.data || 'Không thể gửi đánh giá!';
+      setReviewError(errorMessage);
+      toast.error(errorMessage);
+    }
   };
 
   const uploadProps = {
@@ -189,7 +225,8 @@ const Account = () => {
       dataIndex: 'status',
       key: 'status',
       render: (status) => {
-        const color = status === 'WAITING' ? 'blue' : status === 'CONFIRMED' ? 'green' : 'red';
+        const color =
+          status === 'WAITING' ? 'blue' : status === 'CONFIRMED' ? 'green' : status === 'DELIVERED' ? 'purple' : 'red';
         return <Tag color={color}>{status}</Tag>;
       },
     },
@@ -210,6 +247,11 @@ const Account = () => {
           {record.status === 'WAITING' && (
             <Button type="link" danger onClick={() => handleCancelOrder(record.id)}>
               Hủy đơn
+            </Button>
+          )}
+          {record.status === 'DELIVERED' && (
+            <Button type="link" onClick={() => handleReviewOrder(record.serialNumber)}>
+              Đánh giá sản phẩm
             </Button>
           )}
         </>
@@ -236,7 +278,7 @@ const Account = () => {
     );
   }
 
-  const sortedOrders = [...orders].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); // Sắp xếp đơn hàng
+  const sortedOrders = [...orders].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
   return (
     <div style={{ padding: '20px', maxWidth: '1000px', margin: '0 auto' }}>
@@ -296,7 +338,11 @@ const Account = () => {
 
         <TabPane tab="Thông tin cá nhân" key="2">
           <Form form={profileForm} layout="vertical" onFinish={onProfileFinish}>
-            <Form.Item name="username" label="Tên đăng nhập" rules={[{ required: true, message: 'Vui lòng nhập tên đăng nhập!' }]}>
+            <Form.Item
+              name="username"
+              label="Tên đăng nhập"
+              rules={[{ required: true, message: 'Vui lòng nhập tên đăng nhập!' }]}
+            >
               <Input />
             </Form.Item>
             <Form.Item
@@ -452,6 +498,7 @@ const Account = () => {
         </TabPane>
       </Tabs>
 
+      {/* Modal chi tiết đơn hàng */}
       <Modal
         title={`Chi tiết đơn hàng #${selectedOrder}`}
         open={isModalVisible}
@@ -467,7 +514,9 @@ const Account = () => {
           <div>
             <Title level={4}>Thông tin đơn hàng</Title>
             <Text strong>Trạng thái: </Text>
-            <Tag color={orderDetail.status === 'WAITING' ? 'blue' : orderDetail.status === 'CONFIRMED' ? 'green' : 'red'}>
+            <Tag
+              color={orderDetail.status === 'WAITING' ? 'blue' : orderDetail.status === 'CONFIRMED' ? 'green' : orderDetail.status === 'DELIVERED' ? 'purple' : 'red'}
+            >
               {orderDetail.status}
             </Tag>
             <br />
@@ -499,10 +548,89 @@ const Account = () => {
                 <Text>Số lượng: {item.orderQuantity}</Text>
                 <br />
                 <Text strong>Tổng: {(item.unitPrice * item.orderQuantity).toLocaleString('vi-VN')} VNĐ</Text>
+                <br />
+                <Text strong>Trạng thái đánh giá: </Text>
+                <Tag color={item.isReviewed ? 'green' : 'red'}>
+                  {item.isReviewed ? 'Đã đánh giá' : 'Chưa đánh giá'}
+                </Tag>
                 <Divider style={{ margin: '8px 0' }} />
               </div>
             ))}
           </div>
+        )}
+      </Modal>
+
+      {/* Modal đánh giá sản phẩm */}
+      <Modal
+        title={`Đánh giá sản phẩm - Đơn hàng #${selectedOrder}`}
+        open={isReviewModalVisible}
+        onCancel={handleModalClose}
+        footer={null}
+        width={600}
+      >
+        {orderLoading ? (
+          <Spin tip="Đang tải chi tiết đơn hàng..." style={{ display: 'block', margin: '20px auto' }} />
+        ) : !orderDetail ? (
+          <Alert message="Không tìm thấy chi tiết đơn hàng!" type="error" showIcon />
+        ) : (
+          <>
+            {reviewError && (
+              <Alert
+                message={reviewError}
+                type="error"
+                showIcon
+                style={{ marginBottom: 16 }}
+              />
+            )}
+            <Form form={reviewForm} layout="vertical" onFinish={handleSubmitReview}>
+              <Form.Item
+                name="productId"
+                label="Chọn sản phẩm"
+                rules={[{ required: true, message: 'Vui lòng chọn sản phẩm!' }]}
+              >
+                <Select placeholder="Chọn sản phẩm">
+                  {orderDetail.items
+                    .filter((item) => !item.isReviewed) // Chỉ hiển thị sản phẩm chưa được đánh giá
+                    .map((item) => (
+                      <Option key={item.productId} value={item.productId}>
+                        {item.productName}
+                      </Option>
+                    ))}
+                </Select>
+              </Form.Item>
+              {orderDetail.items.every((item) => item.isReviewed) && (
+                <Alert
+                  message="Tất cả sản phẩm trong đơn hàng đã được đánh giá!"
+                  type="info"
+                  showIcon
+                  style={{ marginBottom: 16 }}
+                />
+              )}
+              <Form.Item
+                name="rating"
+                label="Đánh giá"
+                rules={[{ required: true, message: 'Vui lòng chọn số sao!' }]}
+              >
+                <Rate />
+              </Form.Item>
+              <Form.Item
+                name="comment"
+                label="Bình luận"
+                rules={[{ required: true, message: 'Vui lòng nhập bình luận!' }]}
+              >
+                <Input.TextArea rows={4} placeholder="Nhập bình luận của bạn..." />
+              </Form.Item>
+              <Form.Item>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  disabled={orderDetail.items.every((item) => item.isReviewed)} // Vô hiệu hóa nút nếu tất cả sản phẩm đã được đánh giá
+                >
+                  Gửi đánh giá
+                </Button>
+              </Form.Item>
+            </Form>
+          </>
         )}
       </Modal>
     </div>

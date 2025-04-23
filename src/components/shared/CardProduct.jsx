@@ -7,6 +7,7 @@ import { toast } from 'react-toastify';
 import { useDispatch, useSelector } from 'react-redux';
 import { addToWishList, removeFromWishList, fetchWishList } from '../../redux/wishListSlice';
 import Cookies from 'js-cookie';
+import reviewService from '../../services/reviewService';
 
 function CardProduct({ product, onAddToCart }) {
   const dispatch = useDispatch();
@@ -15,17 +16,34 @@ function CardProduct({ product, onAddToCart }) {
   const isUser = location.pathname.startsWith('/user');
   const { wishList } = useSelector((state) => state.wishList);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [averageRating, setAverageRating] = useState(0);
 
+  // Lấy danh sách yêu thích nếu là người dùng đã đăng nhập
   useEffect(() => {
     if (isUser && Cookies.get('token')) {
       dispatch(fetchWishList({ page: 0, size: 10 }));
     }
   }, [dispatch, isUser]);
 
+  // Cập nhật trạng thái yêu thích dựa trên danh sách yêu thích
   useEffect(() => {
     setIsFavorite(wishList.some((item) => item.productId === product.id));
   }, [wishList, product.id]);
 
+  // Lấy số sao trung bình từ API
+  useEffect(() => {
+    const fetchAverageRating = async () => {
+      try {
+        const rating = await reviewService.getAverageRating(product.id);
+        setAverageRating(rating || 0);
+      } catch (error) {
+        console.error('Lỗi khi lấy số sao trung bình:', error);
+      }
+    };
+    fetchAverageRating();
+  }, [product.id]);
+
+  // Xử lý thêm vào giỏ hàng
   const handleAddToCart = () => {
     const token = Cookies.get('token');
     const roles = Cookies.get('roles') ? JSON.parse(Cookies.get('roles')) : [];
@@ -39,6 +57,7 @@ function CardProduct({ product, onAddToCart }) {
     onAddToCart(product);
   };
 
+  // Xử lý thêm/xóa khỏi danh sách yêu thích
   const handleToggleWishList = () => {
     if (!isUser || !Cookies.get('token')) {
       toast.info('Vui lòng đăng nhập để thêm vào danh sách yêu thích!');
@@ -56,12 +75,40 @@ function CardProduct({ product, onAddToCart }) {
     }
   };
 
+  // Link đến trang chi tiết sản phẩm
   const detailLink = isUser
     ? `/user/product-detail/${product.id}`
     : `/product-detail/${product.id}`;
 
+  // Hàm tạo ngôi sao đánh giá và hiển thị số sao trung bình
+  const renderStars = () => {
+    const fullStars = Math.floor(averageRating);
+    const hasHalfStar = averageRating % 1 >= 0.5;
+    const stars = [];
+
+    for (let i = 0; i < 5; i++) {
+      if (i < fullStars) {
+        stars.push(<FaStar key={i} style={{ color: '#fadb14', fontSize: '14px', marginRight: '2px' }} />);
+      } else if (i === fullStars && hasHalfStar) {
+        stars.push(<FaStar key={i} style={{ color: '#fadb14', fontSize: '14px', marginRight: '2px', opacity: 0.5 }} />);
+      } else {
+        stars.push(<FaStar key={i} style={{ color: '#e0e0e0', fontSize: '14px', marginRight: '2px' }} />);
+      }
+    }
+
+    return (
+      <div style={{ display: 'flex', alignItems: 'center' }}>
+        {stars}
+        <span style={{ marginLeft: '5px', fontSize: '14px', color: '#333' }}>
+          {averageRating.toFixed(1)}
+        </span>
+      </div>
+    );
+  };
+
   return (
     <Card style={{ width: '100%', maxWidth: '300px', border: '1px solid #e0e0e0', borderRadius: '8px', position: 'relative' }}>
+      {/* Nhãn thương hiệu */}
       <div
         style={{
           position: 'absolute',
@@ -78,6 +125,7 @@ function CardProduct({ product, onAddToCart }) {
         {product.brand || 'EGA'}
       </div>
 
+      {/* Hình ảnh sản phẩm */}
       <Card.Img
         variant="top"
         src={product.image || 'https://via.placeholder.com/150'}
@@ -86,14 +134,14 @@ function CardProduct({ product, onAddToCart }) {
       />
 
       <Card.Body>
+        {/* Tên sản phẩm */}
         <Card.Title style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '8px' }}>
           {product.productName}
         </Card.Title>
 
+        {/* Đánh giá và nút yêu thích */}
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-          {[...Array(5)].map((_, index) => (
-            <FaStar key={index} style={{ color: '#fadb14', fontSize: '14px', marginRight: '2px' }} />
-          ))}
+          {renderStars()}
           {isUser && (
             <span
               style={{ cursor: 'pointer', marginLeft: '5px' }}
@@ -106,8 +154,9 @@ function CardProduct({ product, onAddToCart }) {
               )}
             </span>
           )}
-        </div>
+  </div>
 
+        {/* Giá sản phẩm và giảm giá */}
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
           <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#ff4d4d', marginRight: '10px' }}>
             {product.unitPrice?.toLocaleString('vi-VN')}đ
@@ -128,6 +177,7 @@ function CardProduct({ product, onAddToCart }) {
           )}
         </div>
 
+        {/* Nút hành động */}
         <div style={{ display: 'flex', gap: '10px' }}>
           <NavLink
             className="btn btn-primary"

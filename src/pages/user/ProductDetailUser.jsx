@@ -1,14 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Image, Typography, Button, Spin, Alert } from 'antd';
+import ProductDetail from '../../components/shared/ProductDetail';
 import { getProductById } from '../../services/productApi';
+import { Spin, Alert } from 'antd';
 import { toast } from 'react-toastify';
 import { useDispatch, useSelector } from 'react-redux';
 import { addToUserCart, fetchUserCart } from '../../redux/userCartSlice';
 import UserCartModal from '../../components/user/UserCartModal';
 import Cookies from 'js-cookie';
+import axios from 'axios';
 
-const { Title, Paragraph } = Typography;
+const BASE_URL = axios.create({
+  baseURL: 'http://localhost:8080/api/v1',
+});
 
 function ProductDetailUser() {
   const { productId } = useParams();
@@ -19,6 +23,7 @@ function ProductDetailUser() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const cartItems = useSelector((state) => state.userCart.items || []);
+  const userId = Cookies.get('userId') || localStorage.getItem('userId'); // Giả định userId được lưu sau khi đăng nhập
 
   useEffect(() => {
     const token = Cookies.get('token');
@@ -47,6 +52,7 @@ function ProductDetailUser() {
         setLoading(false);
       }
     };
+
     fetchProduct();
   }, [productId]);
 
@@ -57,8 +63,27 @@ function ProductDetailUser() {
       toast.warning(`Số lượng trong kho không đủ! Chỉ còn ${product.stockQuantity} sản phẩm.`);
       return;
     }
-    dispatch(addToUserCart({ productId: product.id, quantity: 1 }));
-    setCartVisible(true);
+    dispatch(addToUserCart({ productId: product.id, quantity: 1 }))
+      .unwrap()
+      .then(() => {
+        toast.success(`${product.productName} đã được thêm vào giỏ hàng!`);
+        setCartVisible(true);
+      })
+      .catch(() => toast.error('Lỗi khi thêm vào giỏ hàng!'));
+  };
+
+  const handleSubmitReview = async (values) => {
+    try {
+      await BASE_URL.post('/reviews', {
+        productId: values.productId,
+        rating: values.rating,
+        comment: values.comment,
+      }, {
+        headers: { Authorization: `Bearer ${Cookies.get('token')}` },
+      });
+    } catch (error) {
+      throw error; // Để ProductDetail xử lý lỗi và hiển thị thông báo
+    }
   };
 
   if (loading) {
@@ -80,42 +105,12 @@ function ProductDetailUser() {
   return (
     <>
       <UserCartModal visible={cartVisible} onClose={() => setCartVisible(false)} />
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '20px' }}>
-        <Card className="product-detail-card">
-          <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
-            <Image
-              width={400}
-              height={400}
-              src={product.image || 'https://via.placeholder.com/400'}
-              alt={product.productName}
-              style={{ objectFit: 'cover', borderRadius: '8px' }}
-            />
-            <div style={{ flex: 1, minWidth: '300px' }}>
-              <Title level={2} style={{ color: '#1890ff' }}>
-                {product.productName}
-              </Title>
-              <Paragraph style={{ fontSize: '16px', color: '#666' }}>
-                {product.description || 'Không có mô tả cho sản phẩm này.'}
-              </Paragraph>
-              <Paragraph strong style={{ fontSize: '24px', color: '#d32f2f' }}>
-                {product.unitPrice.toLocaleString('vi-VN')} đ
-              </Paragraph>
-              <Paragraph style={{ fontSize: '16px' }}>
-                Số lượng tồn kho: <strong>{product.stockQuantity}</strong> sản phẩm
-              </Paragraph>
-              <Button
-                type="primary"
-                size="large"
-                onClick={handleAddToCart}
-                disabled={product.stockQuantity === 0}
-                style={{ marginTop: '16px' }}
-              >
-                {product.stockQuantity === 0 ? 'Hết hàng' : 'Thêm vào giỏ hàng'}
-              </Button>
-            </div>
-          </div>
-        </Card>
-      </div>
+      <ProductDetail
+        product={product}
+        onAddToCart={handleAddToCart}
+        userId={userId}
+        onSubmitReview={handleSubmitReview}
+      />
     </>
   );
 }

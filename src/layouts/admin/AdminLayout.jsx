@@ -10,6 +10,7 @@ import {
   SunOutlined,
   MoonOutlined,
   LogoutOutlined,
+  CommentOutlined,
 } from "@ant-design/icons";
 import { Button, Layout, Menu, Switch, Space, theme } from "antd";
 import { Outlet, useNavigate } from "react-router-dom";
@@ -75,6 +76,12 @@ const AdminLayout = () => {
       icon: <BarChartOutlined />,
       label: "Reports",
       onClick: () => navigate("/admin/reports"),
+    },
+    {
+      key: "reviews",
+      icon: <CommentOutlined />,
+      label: "Reviews",
+      onClick: () => navigate("/admin/reviews"),
     },
     {
       key: "logout",

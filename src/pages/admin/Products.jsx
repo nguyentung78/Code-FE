@@ -11,20 +11,19 @@ import Cookies from "js-cookie";
 const { Search } = Input;
 
 const Products = () => {
-  const [open, setOpen] = useState(false); // Đổi tên từ isModalOpen thành open
-  const [selectedProduct, setSelectedProduct] = useState(null); // Đổi từ selectedProductId thành selectedProduct
-  const [categories, setCategories] = useState([]); // Thêm state để lưu danh sách danh mục
+  const [open, setOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null); 
+  const [categories, setCategories] = useState([]); 
   const dispatch = useDispatch();
   const { data: products, total, loading, error, keyword } = useSelector((state) => state.products);
   const [pagination, setPagination] = useState({ current: 1, pageSize: 5 });
 
-  // Lấy danh sách danh mục khi component mount
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         const response = await BASE_URL_ADMIN.get("/categories/search?page=0&size=1000", {
           headers: {
-            Authorization: `Bearer ${Cookies.get("token")}`, // Thêm token thủ công
+            Authorization: `Bearer ${Cookies.get("token")}`, 
           },
         });
         setCategories(response.data.content);
@@ -44,7 +43,7 @@ const Products = () => {
     setOpen(true);
   };
 
-  const handleEdit = (product) => { // Đổi từ id thành product để truyền toàn bộ object
+  const handleEdit = (product) => { 
     setSelectedProduct(product);
     setOpen(true);
   };
@@ -67,7 +66,7 @@ const Products = () => {
     }
   };
 
-  const onClose = () => { // Đổi tên từ handleCancel thành onClose
+  const onClose = () => { 
     setOpen(false);
     setSelectedProduct(null);
     dispatch(getProductsThunk({ page: pagination.current, size: pagination.pageSize, keyword }));

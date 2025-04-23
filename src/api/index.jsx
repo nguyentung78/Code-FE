@@ -9,11 +9,26 @@ export const BASE_URL_AUTH = axios.create({ baseURL: 'http://localhost:8080/api/
 BASE_URL.interceptors.request.use(
   (config) => {
     const token = Cookies.get('token');
-    // Chỉ thêm token nếu token tồn tại và không phải là các endpoint permitAll
-    if (token && !config.url.includes('/user/cart/checkout/success') && !config.url.includes('/user/cart/checkout/cancel')) {
+    // Danh sách endpoint public không cần token
+    const publicEndpoints = [
+      '/public/products',
+      '/public/categories',
+      '/public/products/featured-products',
+      '/public/products/categories',
+      '/public/products/\\d+/reviews', // Regex cho /public/products/:id/reviews
+      '/public/products/\\d+/average-rating', // Regex cho /public/products/:id/average-rating
+    ];
+
+    // Kiểm tra nếu URL khớp với endpoint public
+    const isPublic = publicEndpoints.some((endpoint) =>
+      new RegExp(endpoint).test(config.url)
+    );
+
+    // Chỉ thêm token nếu không phải endpoint public và token tồn tại
+    if (token && !isPublic && !config.url.includes('/user/cart/checkout/success') && !config.url.includes('/user/cart/checkout/cancel')) {
       config.headers.Authorization = `Bearer ${token}`;
     } else {
-      delete config.headers.Authorization; // Xóa header Authorization nếu token không tồn tại
+      delete config.headers.Authorization; // Xóa header Authorization
     }
     return config;
   },

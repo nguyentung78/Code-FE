@@ -6,7 +6,6 @@ import { getProductById } from '../../services/productApi';
 import { Spin, Alert } from 'antd';
 import { toast } from 'react-toastify';
 import { useDispatch, useSelector } from 'react-redux';
-import { addToGuestCart, updateGuestQuantity, removeFromGuestCart } from '../../redux/guestCartSlice'; // Sử dụng guestCartSlice
 
 const GuestProductDetail = () => {
   const { productId } = useParams();
