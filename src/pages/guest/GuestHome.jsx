@@ -9,13 +9,14 @@ import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
 import { MenuFoldOutlined, MenuUnfoldOutlined, ShopOutlined, LaptopOutlined, PhoneOutlined, GiftOutlined, ToolOutlined, SkinOutlined, HomeOutlined } from '@ant-design/icons';
 import { Menu } from 'antd';
+import { useDispatch, useSelector } from 'react-redux';
+import { getPublicProductsThunk, getFeaturedProductsThunk } from '../../redux/productSlice';
 
 function GuestHome() {
-  const [products, setProducts] = useState([]);
-  const [featuredProducts, setFeaturedProducts] = useState([]);
+  const dispatch = useDispatch();
+  const { data: products, featured: featuredProducts, total, loading, error } = useSelector((state) => state.products); // Sửa từ state.productSlice thành state.products
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [loading, setLoading] = useState(false);
   const [collapsed, setCollapsed] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const productsPerPage = 9;
@@ -34,47 +35,9 @@ function GuestHome() {
   }, []);
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      setLoading(true);
-      try {
-        let url = `/public/products?page=${currentPage - 1}&size=${productsPerPage}`;
-        if (selectedCategory) {
-          url = `/public/products/categories/${selectedCategory}?page=${currentPage - 1}&size=${productsPerPage}`;
-        }
-        const response = await BASE_URL.get(url);
-        setProducts(
-          selectedCategory
-            ? Array.isArray(response.data)
-              ? response.data
-              : []
-            : Array.isArray(response.data.content)
-            ? response.data.content
-            : []
-        );
-      } catch (error) {
-        toast.error('Không thể tải danh sách sản phẩm!');
-        setProducts([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    const fetchFeaturedProducts = async () => {
-      setLoading(true);
-      try {
-        const response = await BASE_URL.get('/public/products/featured-products');
-        setFeaturedProducts(Array.isArray(response.data) ? response.data : []);
-      } catch (error) {
-        toast.error('Không thể tải danh sách sản phẩm nổi bật!');
-        setFeaturedProducts([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProducts();
-    fetchFeaturedProducts();
-  }, [selectedCategory, currentPage]);
+    dispatch(getPublicProductsThunk({ page: currentPage, size: productsPerPage, categoryId: selectedCategory }));
+    dispatch(getFeaturedProductsThunk());
+  }, [dispatch, selectedCategory, currentPage]);
 
   const sliderSettings = {
     dots: true,
@@ -97,7 +60,7 @@ function GuestHome() {
   ];
 
   const handleCategoryClick = (categoryId) => {
-    setSelectedCategory(categoryId);
+    setSelectedCategory(categoryId === 'all' ? null : categoryId);
     setCurrentPage(1);
   };
 
@@ -124,11 +87,6 @@ function GuestHome() {
       icon: getCategoryIcon(category.categoryName),
     })),
   ];
-
-  const indexOfLastProduct = currentPage * productsPerPage;
-  const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
-  const currentProducts = products.slice(indexOfFirstProduct, indexOfLastProduct);
-  const totalPages = Math.ceil(products.length / productsPerPage);
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
@@ -218,7 +176,7 @@ function GuestHome() {
             mode="inline"
             inlineCollapsed={collapsed}
             items={menuItems}
-            onClick={({ key }) => handleCategoryClick(key === 'all' ? null : key)}
+            onClick={({ key }) => handleCategoryClick(key)}
           />
         </div>
 
@@ -234,7 +192,7 @@ function GuestHome() {
             ) : products.length > 0 ? (
               <>
                 <Row>
-                  {currentProducts.map((item) => (
+                  {products.map((item) => (
                     <Col lg={4} key={item.id} className="mb-4">
                       <CardProduct product={item} />
                     </Col>
@@ -243,7 +201,7 @@ function GuestHome() {
                 <div className="pagination-container">
                   <Pagination
                     current={currentPage}
-                    total={products.length}
+                    total={total}
                     pageSize={productsPerPage}
                     onChange={handlePageChange}
                     showSizeChanger={false}
